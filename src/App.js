@@ -237,6 +237,7 @@ export default function App() {
   const [user,setUser]=useState(null); const [isCoach,setIsCoach]=useState(false);
   const [view,setView]=useState("planning");
   const [users,setUsers]=useState({}); const [seances,setSeances]=useState({});
+  const [localPresences,setLocalPresences]=useState({}); // presences locales optimistes
   const [logs,setLogs]=useState({}); const [comps,setComps]=useState({});
   const [cycles,setCycles]=useState({});
   const [selSeance,setSelSeance]=useState(null); const [selAthlete,setSelAthlete]=useState(null);
@@ -259,7 +260,11 @@ export default function App() {
   if(!user) return <Login onLogin={handleLogin}/>;
 
   const athletesList=Object.values(users);
-  const seancesList=Object.entries(seances).map(([id,s])=>({...s,id}));
+  // Fusionner presences locales (optimistes) avec données Firebase
+  const seancesList=Object.entries(seances).map(([id,s])=>({
+    ...s,id,
+    presences:{...(s.presences||{}),...(localPresences[id]||{})}
+  }));
   const cyclesList=Object.entries(cycles).map(([id,c])=>({...c,id}));
 
   const notifs={};
@@ -324,11 +329,11 @@ export default function App() {
         ))}
       </nav>
 
-      {selSeance&&<SeanceModal seance={selSeance} athletesList={athletesList} logs={logs} isCoach={isCoach} user={user} notifs={notifs} cyclesList={cyclesList} onClose={()=>setSelSeance(null)} onPresence={(sid,uid,st)=>{
-        // Optimistic update local immédiat
-        setSeances(prev=>({...prev,[sid]:{...prev[sid],presences:{...(prev[sid]?.presences||{}),[uid]:st}}}));
-        setSelSeance(prev=>prev?{...prev,presences:{...(prev.presences||{}),[uid]:st}}:prev);
-        // Sync Firebase en arrière-plan
+      {selSeance&&<SeanceModal seance={{...selSeance,presences:{...(selSeance.presences||{}),...(localPresences[selSeance.id]||{})}}} athletesList={athletesList} logs={logs} isCoach={isCoach} user={user} notifs={notifs} cyclesList={cyclesList} onClose={()=>setSelSeance(null)} onPresence={(sid,uid,st)=>{
+        // Update local immédiat
+        setLocalPresences(prev=>({...prev,[sid]:{...(prev[sid]||{}),[uid]:st}}));
+        setSelSeance(prev=>prev?{...prev,presences:{...(prev.presences||{}),...(localPresences[prev.id]||{}),[uid]:st}}:prev);
+        // Sync Firebase
         setPresence(sid,uid,st);
       }} onShowLog={setShowLog} onDelete={id=>{deleteSeance(id);setSelSeance(null);}} onUpdate={handleUpdateSeance}/>}
       {showLog&&<LogModal seance={showLog.seance} athleteId={showLog.athleteId} existing={logs[`${showLog.athleteId}_${showLog.seance.id}`]} cyclesList={cyclesList} onClose={()=>setShowLog(null)} onSave={data=>{saveLog(showLog.seance.id,showLog.athleteId,data);setShowLog(null);}}/>}
@@ -1291,4 +1296,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6f
+//v6g
