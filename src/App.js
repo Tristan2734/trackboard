@@ -383,11 +383,19 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
               const nbNL=Object.entries(s.presences||{}).filter(([uid,v])=>v==="present"&&notifs[`${uid}_${s.id}`]).length;
               const myStatus=(s.presences||{})[user.id];
               const isCoachCard=coaches.length>0;
+              const iPresent=myStatus==="present";
               const cs=s.color?colorStyle(s.color):{};
-              const cardStyle=isCoachCard?{background:C.green,border:`1px solid ${C.green}`}:s.color?{...cs,border:"none",borderRadius:16}:{background:C.surface,border:`1px solid ${nbNL>0?C.dangerBorder:C.border}`};
+              const cardStyle=isCoachCard
+                ?{background:C.green,border:`1px solid ${C.green}`}
+                :s.color
+                  ?{...cs,border:"none",borderRadius:16,outline:iPresent?`2.5px solid ${s.color}`:undefined,outlineOffset:iPresent?1:undefined}
+                  :{background:iPresent?C.greenLight:C.surface,border:`1px solid ${iPresent?C.green:nbNL>0?C.dangerBorder:C.border}`};
               return (
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
                   {nbNL>0&&<div style={{position:"absolute",top:10,right:12,width:8,height:8,borderRadius:"50%",background:C.danger}}/>}
+                  {iPresent&&!isCoachCard&&(
+                    <div style={{position:"absolute",top:8,right:nbNL>0?24:10,background:C.green,color:"#fff",borderRadius:6,padding:"2px 7px",fontSize:9,fontWeight:800,letterSpacing:.5}}>✓ Je viens</div>
+                  )}
                   {isCoachCard&&<div style={{fontSize:8,fontWeight:800,color:"#9FD4A8",letterSpacing:1,marginBottom:6}}>COACH · {coaches.map(c=>c.prenom).join(", ")}</div>}
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <SeanceIcon type={s.type} size={36} light={isCoachCard}/>
@@ -395,7 +403,6 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}>
                         <span style={{fontSize:15,fontWeight:800,color:isCoachCard?"#fff":C.text}}>{s.heureDebut}–{s.heureFin}</span>
                         {s.groupe&&<span className="tag" style={{background:isCoachCard?"rgba(255,255,255,0.15)":C.alt,color:isCoachCard?"rgba(255,255,255,0.7)":C.muted}}>{s.groupe}</span>}
-                        {myStatus==="present"&&!isCoachCard&&<span style={{fontSize:9,fontWeight:700,color:C.green}}>✓ Je viens</span>}
                       </div>
                       {(s.disciplines||[]).length>0?(
                         <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
@@ -1278,4 +1285,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6c
+//v6d
