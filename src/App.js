@@ -311,6 +311,8 @@ export default function App() {
     setShowDuplicate(seance);
     setSelSeance(null);
   }
+
+  function handleUpdateSeance(id, data) {
     updateSeance(id, data);
     if(selSeance&&selSeance.id===id) setSelSeance(s=>({...s,...data}));
   }
@@ -1450,4 +1452,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v7
+//v7b
