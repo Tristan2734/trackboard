@@ -324,7 +324,13 @@ export default function App() {
         ))}
       </nav>
 
-      {selSeance&&<SeanceModal seance={selSeance} athletesList={athletesList} logs={logs} isCoach={isCoach} user={user} notifs={notifs} cyclesList={cyclesList} onClose={()=>setSelSeance(null)} onPresence={(sid,uid,st)=>setPresence(sid,uid,st)} onShowLog={setShowLog} onDelete={id=>{deleteSeance(id);setSelSeance(null);}} onUpdate={handleUpdateSeance}/>}
+      {selSeance&&<SeanceModal seance={selSeance} athletesList={athletesList} logs={logs} isCoach={isCoach} user={user} notifs={notifs} cyclesList={cyclesList} onClose={()=>setSelSeance(null)} onPresence={(sid,uid,st)=>{
+        // Optimistic update local immédiat
+        setSeances(prev=>({...prev,[sid]:{...prev[sid],presences:{...(prev[sid]?.presences||{}),[uid]:st}}}));
+        setSelSeance(prev=>prev?{...prev,presences:{...(prev.presences||{}),[uid]:st}}:prev);
+        // Sync Firebase en arrière-plan
+        setPresence(sid,uid,st);
+      }} onShowLog={setShowLog} onDelete={id=>{deleteSeance(id);setSelSeance(null);}} onUpdate={handleUpdateSeance}/>}
       {showLog&&<LogModal seance={showLog.seance} athleteId={showLog.athleteId} existing={logs[`${showLog.athleteId}_${showLog.seance.id}`]} cyclesList={cyclesList} onClose={()=>setShowLog(null)} onSave={data=>{saveLog(showLog.seance.id,showLog.athleteId,data);setShowLog(null);}}/>}
       {showAddSeance&&<AddSeance onClose={()=>setShowAddSeance(false)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowAddSeance(false);}} athletesList={athletesList} cyclesList={cyclesList} user={user} currentWeekOffset={weekOffset}/>}
       {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach}/></Modal>}
@@ -388,13 +394,13 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
               const cardStyle=isCoachCard
                 ?{background:C.green,border:`1px solid ${C.green}`}
                 :s.color
-                  ?{...cs,border:"none",borderRadius:16,outline:iPresent?`2.5px solid ${s.color}`:undefined,outlineOffset:iPresent?1:undefined}
-                  :{background:C.surface,border:`1px solid ${iPresent?C.green:nbNL>0?C.dangerBorder:C.border}`,borderWidth:iPresent?2:1};
+                  ?{...cs,border:"none",borderRadius:16,outline:iPresent?`2.5px solid #D4A017`:undefined,outlineOffset:iPresent?1:undefined}
+                  :{background:C.surface,border:iPresent?`2px solid #D4A017`:`1px solid ${nbNL>0?C.dangerBorder:C.border}`};
               return (
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
                   {nbNL>0&&<div style={{position:"absolute",top:10,right:12,width:8,height:8,borderRadius:"50%",background:C.danger}}/>}
                   {iPresent&&!isCoachCard&&(
-                    <div style={{position:"absolute",top:8,right:nbNL>0?24:10,background:C.green,color:"#fff",borderRadius:6,padding:"2px 7px",fontSize:9,fontWeight:800,letterSpacing:.5}}>✓ Je viens</div>
+                    <div style={{position:"absolute",top:8,right:nbNL>0?24:10,background:"#D4A017",color:"#fff",borderRadius:6,padding:"2px 7px",fontSize:9,fontWeight:800,letterSpacing:.5}}>✓ Je viens</div>
                   )}
                   {isCoachCard&&<div style={{fontSize:8,fontWeight:800,color:"#9FD4A8",letterSpacing:1,marginBottom:6}}>COACH · {coaches.map(c=>c.prenom).join(", ")}</div>}
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1285,4 +1291,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6e
+//v6f
