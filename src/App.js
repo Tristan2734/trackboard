@@ -648,17 +648,18 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
 }
 
 function NotesSection({userId,viewerId,isCoach}) {
+  const canSee=isCoach||viewerId===userId;
   const [notes,setNotes]=useState({});
   const [showAdd,setShowAdd]=useState(false);
   const [editNote,setEditNote]=useState(null);
   const [search,setSearch]=useState("");
 
   useEffect(()=>{
+    if(!canSee)return;
     const un=getNotes(userId,setNotes);
     return()=>un&&un();
-  },[userId]);
+  },[userId,canSee]);
 
-  const canSee=isCoach||viewerId===userId;
   if(!canSee)return null;
 
   const notesList=Object.entries(notes).map(([id,n])=>({...n,id}))
@@ -1448,4 +1449,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v7d
+//v7e
