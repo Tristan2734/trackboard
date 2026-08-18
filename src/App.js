@@ -244,6 +244,17 @@ export default function App() {
   const [showLog,setShowLog]=useState(null); const [showAddSeance,setShowAddSeance]=useState(false);
   const [showAddComp,setShowAddComp]=useState(false); const [showProfile,setShowProfile]=useState(false);
   const [weekOffset,setWeekOffset]=useState(0);
+  const [meteo,setMeteo]=useState(null);
+
+  useEffect(()=>{
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=43.6109&longitude=3.8763&current=temperature_2m,weather_code&timezone=Europe/Paris")
+      .then(r=>r.json()).then(d=>{
+        const t=Math.round(d.current.temperature_2m);
+        const wc=d.current.weather_code;
+        const icon=wc===0?"☀️":wc<=3?"🌤️":wc<=48?"🌥️":wc<=67?"🌧️":wc<=77?"❄️":wc<=82?"🌦️":"⛈️";
+        setMeteo({t,icon});
+      }).catch(()=>{});
+  },[]);
   const [filterGroupe,setFilterGroupe]=useState("all");
   const [filterMine,setFilterMine]=useState(false);
 
@@ -301,12 +312,18 @@ export default function App() {
 
   return (
     <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",background:C.bg,paddingBottom:80}}>
-      <div style={{background:C.surface,borderBottom:`1px solid ${C.border}`,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
+      <div style={{background:"#DDD8CC",borderBottom:`1px solid #C8C3B5`,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <div>
-          <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:C.light,textTransform:"uppercase"}}>TrackBoard</div>
-          <div style={{fontSize:17,fontWeight:800,color:C.text,lineHeight:1.2}}>{isCoach?"Coach · "+Object.keys(users).length+" membres":user.prenom+" "+user.nom}</div>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:"#8A8578",textTransform:"uppercase",marginBottom:2}}>TrackBoard</div>
+          <div style={{fontSize:15,fontWeight:800,color:C.text,lineHeight:1.2}}>{new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {meteo&&(
+            <div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(255,255,255,0.5)",borderRadius:10,padding:"5px 10px"}}>
+              <span style={{fontSize:16}}>{meteo.icon}</span>
+              <span style={{fontSize:13,fontWeight:700,color:C.text}}>{meteo.t}°</span>
+            </div>
+          )}
           {nbNotifs>0&&<div style={{background:C.danger,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700}}>{nbNotifs}</div>}
           <div onClick={()=>setShowProfile(true)} style={{cursor:"pointer"}}><Avatar nom={user.nom} prenom={user.prenom} photo={user.photo} size={36}/></div>
         </div>
@@ -407,7 +424,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
                   {nbNL>0&&<div style={{position:"absolute",top:10,right:12,width:8,height:8,borderRadius:"50%",background:C.danger}}/>}
                   {iPresent&&!isCoachCard&&(
-                    <div style={{position:"absolute",top:8,right:nbNL>0?24:10,background:"#D4A017",color:"#fff",borderRadius:6,padding:"2px 7px",fontSize:9,fontWeight:800,letterSpacing:.5}}>✓ Je viens</div>
+                    <div style={{position:"absolute",top:8,right:nbNL>0?24:10,background:"#D4A017",color:"#fff",borderRadius:6,padding:"2px 7px",fontSize:9,fontWeight:800,letterSpacing:.5,maxWidth:"60px"}}>✓ Je viens</div>
                   )}
                   {isCoachCard&&<div style={{fontSize:8,fontWeight:800,color:"#9FD4A8",letterSpacing:1,marginBottom:6}}>COACH · {coaches.map(c=>c.prenom).join(", ")}</div>}
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1298,4 +1315,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6i
+//v6j
