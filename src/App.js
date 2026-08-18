@@ -389,10 +389,12 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
             </div>
             {seances.length===0&&<div style={{padding:"0 20px 6px",fontSize:12,color:C.light}}>—</div>}
             {seances.map(s=>{
-              const coaches=athletesList.filter(a=>a.role==="coach"&&(s.presences||{})[a.id]==="present");
+              const coaches=athletesList.filter(a=>a.role==="coach"&&a.id!==user.id&&(s.presences||{})[a.id]==="present");
               const nbP=Object.values(s.presences||{}).filter(v=>v==="present").length;
               const nbNL=Object.entries(s.presences||{}).filter(([uid,v])=>v==="present"&&notifs[`${uid}_${s.id}`]).length;
-              const myStatus=(s.presences||{})[user.id];
+              const myStatus=localPresences[s.id]?.[user.id]!==undefined
+                ? localPresences[s.id][user.id]
+                : (s.presences||{})[user.id];
               const isCoachCard=coaches.length>0;
               const iPresent=myStatus==="present";
               const cs=s.color?colorStyle(s.color):{};
@@ -1296,5 +1298,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6g
-//v6g2
+//v6h
