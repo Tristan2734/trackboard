@@ -265,7 +265,8 @@ export default function App() {
   const notifs={};
   seancesList.forEach(s=>{
     Object.entries(s.presences||{}).forEach(([uid,st])=>{
-      if(st==="present"&&!logs[`${uid}_${s.id}`])notifs[`${uid}_${s.id}`]=true;
+      const u=users[uid];
+      if(st==="present"&&!logs[`${uid}_${s.id}`]&&u?.role!=="coach")notifs[`${uid}_${s.id}`]=true;
     });
   });
   const nbNotifs=isCoach?Object.keys(notifs).length:Object.keys(notifs).filter(k=>k.startsWith(user.id)).length;
@@ -576,6 +577,7 @@ function NotesSection({userId,viewerId,isCoach}) {
   const [notes,setNotes]=useState({});
   const [showAdd,setShowAdd]=useState(false);
   const [editNote,setEditNote]=useState(null);
+  const [search,setSearch]=useState("");
 
   useEffect(()=>{
     const un=getNotes(userId,setNotes);
@@ -585,7 +587,9 @@ function NotesSection({userId,viewerId,isCoach}) {
   const canSee=isCoach||viewerId===userId;
   if(!canSee)return null;
 
-  const notesList=Object.entries(notes).map(([id,n])=>({...n,id})).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const notesList=Object.entries(notes).map(([id,n])=>({...n,id}))
+    .filter(n=>!search||n.titre?.toLowerCase().includes(search.toLowerCase())||n.contenu?.toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>(b.ts||0)-(a.ts||0));
 
   function handleSave(id,data){
     if(id){saveNote(userId,id,{...data,ts:Date.now()});}
@@ -593,22 +597,35 @@ function NotesSection({userId,viewerId,isCoach}) {
     setShowAdd(false);setEditNote(null);
   }
 
+  async function handleDelete(id){
+    if(window.confirm("Supprimer cette note ?")){
+      const {ref:dbRef,remove:dbRemove}=await import("firebase/database");
+      dbRemove(dbRef(db,`notes/${userId}/${id}`));
+    }
+  }
+
   return (
-    <div style={{marginBottom:20}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-        <Lbl>Notes & Carnet</Lbl>
-        <button onClick={()=>setShowAdd(true)} style={{background:C.green,color:"#fff",border:"none",borderRadius:8,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Note</button>
+    <div style={{marginBottom:24}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <div style={{fontSize:13,fontWeight:800,color:C.text}}>📝 Notes & Carnet</div>
+        <button onClick={()=>setShowAdd(true)} style={{background:C.green,color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Note</button>
       </div>
-      {notesList.length===0&&<p className="empty">Aucune note pour l'instant.</p>}
-      {notesList.map(n=>(
-        <div key={n.id} className="note-card" onClick={()=>setEditNote(n)}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-            <div style={{fontSize:14,fontWeight:700,color:C.text}}>{n.titre||"Note sans titre"}</div>
-            <div style={{fontSize:10,color:C.light,fontWeight:300,flexShrink:0,marginLeft:8}}>{n.ts?new Date(n.ts).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}):""}</div>
+      <input className="inp" placeholder="Rechercher dans les notes..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:10,fontSize:13,padding:"10px 12px"}}/>
+      <div style={{maxHeight:320,overflowY:"auto"}}>
+        {notesList.length===0&&<p className="empty">Aucune note{search?" trouvée":""} pour l'instant.</p>}
+        {notesList.map(n=>(
+          <div key={n.id} className="note-card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+              <div onClick={()=>setEditNote(n)} style={{flex:1,cursor:"pointer"}}>
+                <div style={{fontSize:14,fontWeight:700,color:C.text}}>{n.titre||"Note sans titre"}</div>
+                <div style={{fontSize:10,color:C.light,fontWeight:300,marginTop:2}}>{n.ts?new Date(n.ts).toLocaleDateString("fr-FR",{day:"numeric",month:"short",year:"numeric"}):""}</div>
+              </div>
+              <button onClick={e=>{e.stopPropagation();handleDelete(n.id);}} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,padding:"0 4px",flexShrink:0}}>✕</button>
+            </div>
+            <div onClick={()=>setEditNote(n)} style={{fontSize:13,color:C.muted,fontWeight:300,lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",cursor:"pointer"}}>{n.contenu||"Vide"}</div>
           </div>
-          <div style={{fontSize:13,color:C.muted,fontWeight:300,lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{n.contenu||"Vide"}</div>
-        </div>
-      ))}
+        ))}
+      </div>
       {(showAdd||editNote)&&<NoteModal note={editNote} onClose={()=>{setShowAdd(false);setEditNote(null);}} onSave={handleSave}/>}
     </div>
   );
@@ -625,6 +642,66 @@ function NoteModal({note,onClose,onSave}) {
         <button className="btn-primary" onClick={()=>onSave(note?.id||null,{titre,contenu})}>Sauvegarder</button>
       </div>
     </Modal>
+  );
+}
+
+function SeanceSearch({mySeances,logs,userId,notifs,onShowLog}) {
+  const [search,setSearch]=useState("");
+  const [filterType,setFilterType]=useState("all");
+  const [filterDisc,setFilterDisc]=useState("");
+
+  if(!search&&filterType==="all"&&!filterDisc)return(
+    <div style={{marginBottom:8}}>
+      <div style={{display:"flex",gap:8,marginBottom:8}}>
+        <input className="inp" placeholder="Rechercher par discipline, date..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,fontSize:13,padding:"10px 12px"}}/>
+      </div>
+      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:8}}>
+        {["all","piste","muscu","autonomie"].map(t=><button key={t} onClick={()=>setFilterType(t)} className={`chip ${filterType===t?"chip-on":"chip-off"}`} style={{flexShrink:0,fontSize:11}}>{t==="all"?"Tout":t}</button>)}
+      </div>
+    </div>
+  );
+
+  const results=mySeances.filter(s=>{
+    if(filterType!=="all"&&s.type!==filterType)return false;
+    if(search){
+      const q=search.toLowerCase();
+      const inDisc=(s.disciplines||[]).some(d=>d.toLowerCase().includes(q));
+      const inContenu=(s.contenu||"").toLowerCase().includes(q);
+      const inJour=JOURS[s.jour]?.toLowerCase().includes(q);
+      if(!inDisc&&!inContenu&&!inJour)return false;
+    }
+    return true;
+  });
+
+  return(
+    <div style={{marginBottom:8}}>
+      <div style={{display:"flex",gap:8,marginBottom:8}}>
+        <input className="inp" placeholder="Rechercher par discipline, date..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,fontSize:13,padding:"10px 12px"}}/>
+        {search&&<button onClick={()=>setSearch("")} style={{background:C.alt,border:"none",borderRadius:10,padding:"0 12px",cursor:"pointer",fontSize:13,color:C.muted,fontWeight:600}}>✕</button>}
+      </div>
+      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:8}}>
+        {["all","piste","muscu","autonomie"].map(t=><button key={t} onClick={()=>setFilterType(t)} className={`chip ${filterType===t?"chip-on":"chip-off"}`} style={{flexShrink:0,fontSize:11}}>{t==="all"?"Tout":t}</button>)}
+      </div>
+      {(search||filterType!=="all")&&(
+        <div style={{marginBottom:8}}>
+          {results.length===0&&<p className="empty">Aucune séance trouvée.</p>}
+          {results.map(s=>{
+            const log=logs[`${userId}_${s.id}`];
+            const need=notifs[`${userId}_${s.id}`];
+            return(
+              <div key={s.id} onClick={()=>onShowLog({seance:s,athleteId:userId})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",borderRadius:12,background:need?C.dangerBg:C.surface,border:`1px solid ${need?C.dangerBorder:C.border}`,marginBottom:6,cursor:"pointer"}}>
+                <SeanceIcon type={s.type} size={30}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:700}}>{JOURS[s.jour]} · {s.heureDebut}</div>
+                  {(s.disciplines||[]).length>0&&<div style={{fontSize:11,color:C.muted,fontWeight:300}}>{(s.disciplines||[]).join(", ")}</div>}
+                  {log?<div style={{fontSize:11,color:C.green,fontWeight:500}}>✓ Bilan rempli</div>:<div style={{fontSize:11,color:need?C.danger:C.light}}>{need?"Bilan à remplir":"—"}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -693,9 +770,13 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
       )}
 
       {/* Notes section */}
-      <NotesSection userId={user.id} viewerId={viewerId} isCoach={isCoach}/>
+      <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:24}}>
+        <NotesSection userId={user.id} viewerId={viewerId} isCoach={isCoach}/>
+      </div>
 
-      <Lbl>Historique des séances</Lbl>
+      {/* Historique */}
+      <div style={{fontSize:13,fontWeight:800,color:C.text,marginBottom:12}}>📅 Historique des séances</div>
+      <SeanceSearch mySeances={mySeances} logs={logs} userId={user.id} notifs={notifs} onShowLog={onShowLog}/>
       {Object.keys(byWeek).length===0&&<p className="empty">Aucune séance cochée.</p>}
       {Object.entries(byWeek).map(([wk,items])=>(
         <div key={wk} style={{marginBottom:16}}>
@@ -722,30 +803,58 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
 function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach}) {
   const [filter,setFilter]=useState("all");
   const [search,setSearch]=useState("");
+  const [editGroupe,setEditGroupe]=useState(null);
+
   const filtered=athletesList.filter(a=>{
     if(filter!=="all"&&a.groupe!==filter)return false;
     if(search&&!`${a.prenom} ${a.nom}`.toLowerCase().includes(search.toLowerCase()))return false;
     return true;
   });
+
+  function assignGroupe(athlete,groupe){
+    saveUser(athlete.id,{...athlete,groupe});
+    setEditGroupe(null);
+  }
+
   return (
     <div style={{padding:"16px 20px"}}>
-      <input className="inp" placeholder="Rechercher..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
+      <input className="inp" placeholder="Rechercher un athlète..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
       <div style={{display:"flex",gap:8,marginBottom:14,overflowX:"auto"}}>
-        {["all",...GROUPES].map(g=><button key={g} onClick={()=>setFilter(g)} className={`chip ${filter===g?"chip-on":"chip-off"}`} style={{flexShrink:0}}>{g==="all"?`Tous (${athletesList.length})`:`${g} (${athletesList.filter(a=>a.groupe===g).length})`}</button>)}
+        {["all",...GROUPES].map(g=>(
+          <button key={g} onClick={()=>setFilter(g)} className={`chip ${filter===g?"chip-on":"chip-off"}`} style={{flexShrink:0}}>
+            {g==="all"?`Tous (${athletesList.length})`:`${g} (${athletesList.filter(a=>a.groupe===g).length})`}
+          </button>
+        ))}
       </div>
       {filtered.length===0&&<p className="empty">Aucun athlète trouvé.</p>}
       {filtered.map(a=>{
         const nb=seancesList.filter(s=>(s.presences||{})[a.id]==="present").length;
         const nbn=Object.keys(notifs).filter(k=>k.startsWith(a.id)).length;
         return (
-          <div key={a.id} onClick={()=>onSel(a)} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",borderRadius:14,background:C.surface,border:`1px solid ${C.border}`,marginBottom:8,cursor:"pointer"}}>
-            <Avatar nom={a.nom} prenom={a.prenom} photo={a.photo} size={44}/>
-            <div style={{flex:1}}>
-              <div style={{fontSize:15,fontWeight:700}}>{a.prenom} {a.nom}{a.role==="coach"&&<span style={{marginLeft:6,fontSize:10,background:C.amberBg,color:C.amber,padding:"2px 6px",borderRadius:5,fontWeight:700}}>COACH</span>}</div>
-              <div style={{fontSize:12,color:C.muted,fontWeight:300,marginTop:2}}>{nb} séance{nb>1?"s":""}{a.groupe?" · "+a.groupe:""}</div>
+          <div key={a.id}>
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",borderRadius:14,background:C.surface,border:`1px solid ${C.border}`,marginBottom:editGroupe===a.id?0:8,borderBottomLeftRadius:editGroupe===a.id?0:14,borderBottomRightRadius:editGroupe===a.id?0:14}}>
+              <div onClick={()=>onSel(a)} style={{display:"flex",alignItems:"center",gap:12,flex:1,cursor:"pointer"}}>
+                <Avatar nom={a.nom} prenom={a.prenom} photo={a.photo} size={44}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:15,fontWeight:700}}>{a.prenom} {a.nom}{a.role==="coach"&&<span style={{marginLeft:6,fontSize:10,background:C.amberBg,color:C.amber,padding:"2px 6px",borderRadius:5,fontWeight:700}}>COACH</span>}</div>
+                  <div style={{fontSize:12,color:C.muted,fontWeight:300,marginTop:2}}>{nb} séance{nb>1?"s":""}{a.groupe?<span style={{marginLeft:4,padding:"1px 6px",background:C.greenLight,color:C.green,borderRadius:4,fontWeight:600,fontSize:11}}>· {a.groupe}</span>:""}</div>
+                </div>
+              </div>
+              {nbn>0&&<div style={{width:22,height:22,borderRadius:"50%",background:C.danger,color:"#fff",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{nbn}</div>}
+              {isCoach&&<button onClick={()=>setEditGroupe(editGroupe===a.id?null:a.id)} style={{background:C.alt,border:"none",borderRadius:8,padding:"6px 10px",cursor:"pointer",fontSize:11,fontWeight:700,color:C.muted,flexShrink:0}}>Groupe</button>}
+              <div onClick={()=>onSel(a)} style={{cursor:"pointer"}}><i className="ti ti-chevron-right" style={{fontSize:18,color:C.light}} aria-hidden="true"/></div>
             </div>
-            {nbn>0&&<div style={{width:22,height:22,borderRadius:"50%",background:C.danger,color:"#fff",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{nbn}</div>}
-            <i className="ti ti-chevron-right" style={{fontSize:18,color:C.light}} aria-hidden="true"/>
+            {editGroupe===a.id&&(
+              <div style={{background:C.greenLight,borderRadius:"0 0 14px 14px",padding:"10px 14px",marginBottom:8,border:`1px solid ${C.border}`,borderTop:"none"}}>
+                <div style={{fontSize:10,fontWeight:700,color:C.green,marginBottom:8,letterSpacing:1}}>ASSIGNER AU GROUPE</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <button onClick={()=>assignGroupe(a,"")} style={{padding:"6px 12px",borderRadius:8,border:`1.5px solid ${!a.groupe?C.green:C.border}`,background:!a.groupe?C.green:"#fff",color:!a.groupe?"#fff":C.muted,fontSize:12,fontWeight:700,cursor:"pointer"}}>Aucun</button>
+                  {GROUPES.map(g=>(
+                    <button key={g} onClick={()=>assignGroupe(a,g)} style={{padding:"6px 12px",borderRadius:8,border:`1.5px solid ${a.groupe===g?C.green:C.border}`,background:a.groupe===g?C.green:"#fff",color:a.groupe===g?"#fff":C.muted,fontSize:12,fontWeight:700,cursor:"pointer"}}>{g}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
@@ -1000,9 +1109,23 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
   );
 }
 
+const CYCLE_DRAFT_KEY="tb_cycle_draft";
+
 function AddCycle({athletesList,onClose,onAdd}) {
-  const [nom,setNom]=useState("");const [assignes,setAssignes]=useState([]);
-  const [seances,setSeances]=useState([{nom:"",exercices:[{nom:"",series:4,reps:8,notes:""}]}]);
+  const draft=JSON.parse(localStorage.getItem(CYCLE_DRAFT_KEY)||"null");
+  const [nom,setNom]=useState(draft?.nom||"");
+  const [assignes,setAssignes]=useState(draft?.assignes||[]);
+  const [seances,setSeances]=useState(draft?.seances||[{nom:"",exercices:[{nom:"",series:4,reps:8,notes:""}]}]);
+  const [saved,setSaved]=useState(false);
+
+  useEffect(()=>{
+    const draft={nom,assignes,seances};
+    localStorage.setItem(CYCLE_DRAFT_KEY,JSON.stringify(draft));
+    setSaved(true);
+    const t=setTimeout(()=>setSaved(false),1000);
+    return()=>clearTimeout(t);
+  },[nom,assignes,seances]);
+
   function addSc(){setSeances(p=>[...p,{nom:"",exercices:[{nom:"",series:4,reps:8,notes:""}]}]);}
   function updScNom(si,v){setSeances(p=>p.map((s,i)=>i===si?{...s,nom:v}:s));}
   function addEx(si){setSeances(p=>p.map((s,i)=>i===si?{...s,exercices:[...s.exercices,{nom:"",series:4,reps:8,notes:""}]}:s));}
@@ -1041,7 +1164,8 @@ function AddCycle({athletesList,onClose,onAdd}) {
             {athletesList.map(a=><button key={a.id} onClick={()=>toggle(a.id)} style={{padding:"7px 14px",borderRadius:10,border:`1.5px solid ${assignes.includes(a.id)?C.green:C.border}`,background:assignes.includes(a.id)?C.greenLight:C.surface,color:assignes.includes(a.id)?C.green:C.muted,fontSize:13,fontWeight:assignes.includes(a.id)?700:400,cursor:"pointer"}}>{a.prenom} {a.nom[0]}.</button>)}
           </div>
         </div>
-        <button className="btn-primary" onClick={()=>onAdd({nom,seances,assignes,createdAt:Date.now()})}>Créer le cycle</button>
+        {saved&&<div style={{textAlign:"center",fontSize:11,color:C.green,fontWeight:600}}>✓ Sauvegardé automatiquement</div>}
+        <button className="btn-primary" onClick={()=>{localStorage.removeItem(CYCLE_DRAFT_KEY);onAdd({nom,seances,assignes,createdAt:Date.now()});}}>Créer le cycle</button>
       </div>
     </Modal>
   );
@@ -1066,7 +1190,7 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
   const [prenom,setPrenom]=useState(user.prenom||"");const [nom,setNom]=useState(user.nom||"");
   const [sexe,setSexe]=useState(user.sexe||"");const [groupe,setGroupe]=useState(user.groupe||"");
   const [photo,setPhoto]=useState(user.photo||"");const [records,setRecords]=useState(user.records||{});
-  const recKeys=sexe==="Femme"?["Pentathlon","Heptathlon"]:["Pentathlon","Décathlon"];
+  const recKeys=sexe==="Femme"?["Pentathlon","Heptathlon"]:["Décathlon","Heptathlon"];
   function handlePhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
   return (
     <Modal onClose={onClose} title="Mon profil" full>
@@ -1101,4 +1225,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//force
+//v6
