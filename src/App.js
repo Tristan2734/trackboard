@@ -313,7 +313,7 @@ export default function App() {
       </div>
 
       <div className="fade">
-        {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)}/>}
+        {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)}/>}
         {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach}/>}
         {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach}/>}
         {view==="comps"&&<Comps comps={comps} athletesList={athletesList} isCoach={isCoach} user={user} onUpdateComp={updateComp} onDeleteComp={deleteComp} onAdd={()=>setShowAddComp(true)}/>}
@@ -345,7 +345,7 @@ export default function App() {
   );
 }
 
-function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,weekOffset,setWeekOffset,ws,isCoach,user,onSel,onAdd}) {
+function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd}) {
   return (
     <div>
       <div style={{padding:"12px 20px 8px"}}>
@@ -389,10 +389,12 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
             </div>
             {seances.length===0&&<div style={{padding:"0 20px 6px",fontSize:12,color:C.light}}>—</div>}
             {seances.map(s=>{
-              const coaches=athletesList.filter(a=>a.role==="coach"&&(s.presences||{})[a.id]==="present");
+              const coaches=athletesList.filter(a=>a.role==="coach"&&a.id!==user.id&&(s.presences||{})[a.id]==="present");
               const nbP=Object.values(s.presences||{}).filter(v=>v==="present").length;
               const nbNL=Object.entries(s.presences||{}).filter(([uid,v])=>v==="present"&&notifs[`${uid}_${s.id}`]).length;
-              const myStatus=(s.presences||{})[user.id];
+              const myStatus=localPresences[s.id]?.[user.id]!==undefined
+                ? localPresences[s.id][user.id]
+                : (s.presences||{})[user.id];
               const isCoachCard=coaches.length>0;
               const iPresent=myStatus==="present";
               const cs=s.color?colorStyle(s.color):{};
@@ -1296,5 +1298,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6g
-//v6g2
+//v6i
