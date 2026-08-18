@@ -237,7 +237,7 @@ export default function App() {
   const [user,setUser]=useState(null); const [isCoach,setIsCoach]=useState(false);
   const [view,setView]=useState("planning");
   const [users,setUsers]=useState({}); const [seances,setSeances]=useState({});
-  const [localPresences,setLocalPresences]=useState({}); // presences locales optimistes
+  const [localPresences,setLocalPresences]=useState({});
   const [logs,setLogs]=useState({}); const [comps,setComps]=useState({});
   const [cycles,setCycles]=useState({});
   const [selSeance,setSelSeance]=useState(null); const [selAthlete,setSelAthlete]=useState(null);
@@ -245,6 +245,9 @@ export default function App() {
   const [showAddComp,setShowAddComp]=useState(false); const [showProfile,setShowProfile]=useState(false);
   const [weekOffset,setWeekOffset]=useState(0);
   const [meteo,setMeteo]=useState(null);
+  const [filterGroupe,setFilterGroupe]=useState("all");
+  const [filterMine,setFilterMine]=useState(false);
+  const [showDuplicate,setShowDuplicate]=useState(null);
 
   useEffect(()=>{
     fetch("https://api.open-meteo.com/v1/forecast?latitude=43.6109&longitude=3.8763&current=temperature_2m,weather_code&timezone=Europe/Paris")
@@ -255,8 +258,6 @@ export default function App() {
         setMeteo({t,icon});
       }).catch(()=>{});
   },[]);
-  const [filterGroupe,setFilterGroupe]=useState("all");
-  const [filterMine,setFilterMine]=useState(false);
 
   useEffect(()=>{const s=localStorage.getItem("tb_user");if(s){const u=JSON.parse(s);setUser(u);setIsCoach(u.role==="coach");}},[]);
   useEffect(()=>{
@@ -304,8 +305,6 @@ export default function App() {
     {key:"comps",icon:"ti-trophy",label:"Compétitions"},
     isCoach?{key:"cycles",icon:"ti-barbell",label:"Cycles"}:null,
   ].filter(Boolean);
-
-  const [showDuplicate,setShowDuplicate]=useState(null);
 
   function handleDuplicate(seance){
     setShowDuplicate(seance);
@@ -1449,4 +1448,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v7e
+//v7f
