@@ -389,7 +389,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                 ?{background:C.green,border:`1px solid ${C.green}`}
                 :s.color
                   ?{...cs,border:"none",borderRadius:16,outline:iPresent?`2.5px solid ${s.color}`:undefined,outlineOffset:iPresent?1:undefined}
-                  :{background:iPresent?C.greenLight:C.surface,border:`1px solid ${iPresent?C.green:nbNL>0?C.dangerBorder:C.border}`};
+                  :{background:C.surface,border:`1px solid ${iPresent?C.green:nbNL>0?C.dangerBorder:C.border}`,borderWidth:iPresent?2:1};
               return (
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
                   {nbNL>0&&<div style={{position:"absolute",top:10,right:12,width:8,height:8,borderRadius:"50%",background:C.danger}}/>}
@@ -1285,4 +1285,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6d
+//v6e
