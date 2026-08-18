@@ -305,7 +305,12 @@ export default function App() {
     isCoach?{key:"cycles",icon:"ti-barbell",label:"Cycles"}:null,
   ].filter(Boolean);
 
-  function handleUpdateSeance(id, data) {
+  const [showDuplicate,setShowDuplicate]=useState(null);
+
+  function handleDuplicate(seance){
+    setShowDuplicate(seance);
+    setSelSeance(null);
+  }
     updateSeance(id, data);
     if(selSeance&&selSeance.id===id) setSelSeance(s=>({...s,...data}));
   }
@@ -347,12 +352,11 @@ export default function App() {
       </nav>
 
       {selSeance&&<SeanceModal seance={{...selSeance,presences:{...(selSeance.presences||{}),...(localPresences[selSeance.id]||{})}}} athletesList={athletesList} logs={logs} isCoach={isCoach} user={user} notifs={notifs} cyclesList={cyclesList} onClose={()=>setSelSeance(null)} onPresence={(sid,uid,st)=>{
-        // Update local immédiat
         setLocalPresences(prev=>({...prev,[sid]:{...(prev[sid]||{}),[uid]:st}}));
         setSelSeance(prev=>prev?{...prev,presences:{...(prev.presences||{}),...(localPresences[prev.id]||{}),[uid]:st}}:prev);
-        // Sync Firebase
         setPresence(sid,uid,st);
-      }} onShowLog={setShowLog} onDelete={id=>{deleteSeance(id);setSelSeance(null);}} onUpdate={handleUpdateSeance}/>}
+      }} onShowLog={setShowLog} onDelete={id=>{deleteSeance(id);setSelSeance(null);}} onUpdate={handleUpdateSeance} onDuplicate={handleDuplicate}/>}
+      {showDuplicate&&<DuplicateSeanceModal seance={showDuplicate} onClose={()=>setShowDuplicate(null)} onAdd={(data)=>{addSeance({...data,weekOffset,createdBy:user.id});setShowDuplicate(null);}} cyclesList={cyclesList} currentWeekOffset={weekOffset}/>}
       {showLog&&<LogModal seance={showLog.seance} athleteId={showLog.athleteId} existing={logs[`${showLog.athleteId}_${showLog.seance.id}`]} cyclesList={cyclesList} onClose={()=>setShowLog(null)} onSave={data=>{saveLog(showLog.seance.id,showLog.athleteId,data);setShowLog(null);}}/>}
       {showAddSeance&&<AddSeance onClose={()=>setShowAddSeance(false)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowAddSeance(false);}} athletesList={athletesList} cyclesList={cyclesList} user={user} currentWeekOffset={weekOffset}/>}
       {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach}/></Modal>}
@@ -424,7 +428,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
                   {nbNL>0&&<div style={{position:"absolute",top:10,right:12,width:8,height:8,borderRadius:"50%",background:C.danger}}/>}
                   {iPresent&&!isCoachCard&&(
-                    <div style={{position:"absolute",bottom:8,left:58,background:"#D4A017",color:"#fff",borderRadius:6,padding:"2px 7px",fontSize:9,fontWeight:800,letterSpacing:.5}}>✓ Je viens</div>
+                    
                   )}
                   {isCoachCard&&<div style={{fontSize:8,fontWeight:800,color:"#9FD4A8",letterSpacing:1,marginBottom:6}}>COACH · {coaches.map(c=>c.prenom).join(", ")}</div>}
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -458,7 +462,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
   );
 }
 
-function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,onClose,onPresence,onShowLog,onDelete,onUpdate}) {
+function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,onClose,onPresence,onShowLog,onDelete,onUpdate,onDuplicate}) {
   const myStatus=(seance.presences||{})[user.id];
   const presents=athletesList.filter(a=>(seance.presences||{})[a.id]==="present");
   const cycle=seance.cycleId?cyclesList.find(c=>c.id===seance.cycleId):null;
@@ -466,9 +470,14 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   const [contenu,setContenu]=useState(seance.contenu||"");
   const [editColor,setEditColor]=useState(false);
   const [color,setColor]=useState(seance.color||"");
+  const [editHoraires,setEditHoraires]=useState(false);
+  const [jour,setJour]=useState(seance.jour??0);
+  const [hD,setHD]=useState(seance.heureDebut||"10:00");
+  const [hF,setHF]=useState(seance.heureFin||"12:00");
 
   function saveContenu(){onUpdate(seance.id,{contenu});setEditContenu(false);}
   function saveColor(c){setColor(c);onUpdate(seance.id,{color:c});setEditColor(false);}
+  function saveHoraires(){onUpdate(seance.id,{jour,heureDebut:hD,heureFin:hF});setEditHoraires(false);}
 
   return (
     <Modal onClose={onClose} title={`${seance.heureDebut} – ${seance.heureFin}`}>
@@ -490,7 +499,30 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
         </div>
       )}
 
-      {/* Contenu éditable */}
+      {/* Édition horaires */}
+      <div style={{marginBottom:14}}>
+        {editHoraires?(
+          <div style={{padding:"12px",background:C.alt,borderRadius:12}}>
+            <Lbl>Modifier horaires / jour</Lbl>
+            <select value={jour} onChange={e=>setJour(+e.target.value)} className="inp" style={{marginBottom:8}}>
+              {JOURS.map((j,i)=><option key={i} value={i}>{j}</option>)}
+            </select>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+              <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Début</div><input type="time" value={hD} onChange={e=>setHD(e.target.value)} className="inp"/></div>
+              <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Fin</div><input type="time" value={hF} onChange={e=>setHF(e.target.value)} className="inp"/></div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button className="btn-primary" onClick={saveHoraires} style={{padding:"10px"}}>Sauvegarder</button>
+              <button className="btn-ghost" onClick={()=>setEditHoraires(false)}>Annuler</button>
+            </div>
+          </div>
+        ):(
+          <button onClick={()=>setEditHoraires(true)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:10,padding:"7px 14px",cursor:"pointer",fontSize:12,color:C.muted,fontWeight:600,display:"flex",alignItems:"center",gap:6}}>
+            <i className="ti ti-clock-edit" style={{fontSize:14}} aria-hidden="true"/>
+            Modifier horaires / jour
+          </button>
+        )}
+      </div>
       <div style={{marginBottom:14}}>
         {editContenu?(
           <div>
@@ -549,9 +581,15 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
           );
         })}
       </div>
-      {(isCoach||(seance.createdBy&&seance.createdBy===user.id))&&(
-        <button className="btn-danger" onClick={()=>{if(window.confirm("Supprimer cette séance ?"))onDelete(seance.id);}}>Supprimer la séance</button>
-      )}
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8}}>
+        <button onClick={()=>onDuplicate(seance)} style={{width:"100%",padding:"13px",borderRadius:12,border:`1.5px solid ${C.border}`,background:C.alt,color:C.text,fontWeight:700,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <i className="ti ti-copy" style={{fontSize:16}} aria-hidden="true"/>
+          Dupliquer cette séance
+        </button>
+        {(isCoach||(seance.createdBy&&seance.createdBy===user.id))&&(
+          <button className="btn-danger" onClick={()=>{if(window.confirm("Supprimer cette séance ?"))onDelete(seance.id);}}>Supprimer la séance</button>
+        )}
+      </div>
     </Modal>
   );
 }
@@ -914,6 +952,20 @@ function Comps({comps,athletesList,isCoach,user,onUpdateComp,onDeleteComp,onAdd}
               <span className="tag" style={{background:C.greenLight,color:C.green,padding:"4px 10px",flexShrink:0}}>{c.niveau}</span>
             </div>
             <div style={{fontSize:13,color:C.muted,fontWeight:300,marginBottom:14}}>📅 {c.date} · 📍 {c.lieu}</div>
+
+            {/* Info coach */}
+            {c.info&&<div style={{padding:"10px 12px",borderRadius:10,background:C.alt,marginBottom:12,fontSize:13,color:C.text,lineHeight:1.6,fontWeight:300}}>{c.info}</div>}
+            {isCoach&&(
+              <InfoCompEditor info={c.info||""} onSave={info=>onUpdateComp(c.id,{info})}/>
+            )}
+
+            {/* Photos */}
+            {(c.photos||[]).length>0&&(
+              <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12}}>
+                {(c.photos||[]).map((p,i)=><img key={i} src={p} alt="" style={{width:100,height:80,objectFit:"cover",borderRadius:8,flexShrink:0}}/>)}
+              </div>
+            )}
+            {isCoach&&<PhotoUploader onAdd={photo=>onUpdateComp(c.id,{photos:[...(c.photos||[]),photo]})}/>}
             <CompInsc existing={(c.inscriptions||{})[user?.id]} onSave={data=>onUpdateComp(c.id,{inscriptions:{...(c.inscriptions||{}),[user.id]:data}})}/>
             {isCoach&&ins.length>0&&(
               <div style={{marginTop:12}}>
@@ -934,6 +986,44 @@ function Comps({comps,athletesList,isCoach,user,onUpdateComp,onDeleteComp,onAdd}
         );
       })}
     </div>
+  );
+}
+
+function InfoCompEditor({info,onSave}) {
+  const [edit,setEdit]=useState(false);
+  const [val,setVal]=useState(info);
+  if(!edit) return (
+    <button onClick={()=>setEdit(true)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,color:C.muted,fontWeight:600,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+      <i className="ti ti-info-circle" style={{fontSize:13}} aria-hidden="true"/>
+      {info?"Modifier les infos":"Ajouter infos (horaires, convocations...)"}
+    </button>
+  );
+  return (
+    <div style={{marginBottom:10}}>
+      <textarea value={val} onChange={e=>setVal(e.target.value)} rows={4} className="inp" style={{resize:"none",marginBottom:8}} placeholder="Horaires, programme, convocations..."/>
+      <div style={{display:"flex",gap:8}}>
+        <button className="btn-primary" onClick={()=>{onSave(val);setEdit(false);}} style={{padding:"9px"}}>Sauvegarder</button>
+        <button className="btn-ghost" onClick={()=>setEdit(false)}>Annuler</button>
+      </div>
+    </div>
+  );
+}
+
+function PhotoUploader({onAdd}) {
+  function handle(e){
+    Array.from(e.target.files).forEach(f=>{
+      const r=new FileReader();
+      r.onload=ev=>onAdd(ev.target.result);
+      r.readAsDataURL(f);
+    });
+    e.target.value="";
+  }
+  return (
+    <label style={{display:"inline-flex",alignItems:"center",gap:6,padding:"6px 12px",border:`1.5px dashed ${C.border}`,borderRadius:8,cursor:"pointer",fontSize:12,color:C.muted,fontWeight:600,marginBottom:12}}>
+      <i className="ti ti-photo-plus" style={{fontSize:14}} aria-hidden="true"/>
+      Ajouter des photos
+      <input type="file" accept="image/*" multiple onChange={handle} style={{display:"none"}}/>
+    </label>
   );
 }
 
@@ -1261,6 +1351,51 @@ function AddCycle({athletesList,onClose,onAdd}) {
   );
 }
 
+function DuplicateSeanceModal({seance,onClose,onAdd,cyclesList,currentWeekOffset}) {
+  const [wo,setWo]=useState(currentWeekOffset);
+  const [jour,setJour]=useState(seance.jour??0);
+  const [hD,setHD]=useState(seance.heureDebut||"10:00");
+  const [hF,setHF]=useState(seance.heureFin||"12:00");
+  const [contenu,setContenu]=useState(seance.contenu||"");
+  const [color,setColor]=useState(seance.color||"");
+  const ws=weekStart(wo);
+
+  function submit(){
+    const {id,presences,...rest}=seance;
+    onAdd({...rest,jour,heureDebut:hD,heureFin:hF,contenu,color,weekOffset:wo,presences:{}});
+  }
+
+  return (
+    <Modal onClose={onClose} title="Dupliquer la séance" full>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{padding:"10px 12px",borderRadius:10,background:C.greenLight,fontSize:12,color:C.green,fontWeight:600}}>
+          Copie de : {seance.heureDebut}–{seance.heureFin} · {seance.type}
+        </div>
+        <div>
+          <Lbl>Semaine</Lbl>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <button onClick={()=>setWo(w=>w-1)} style={{background:C.alt,border:"none",borderRadius:8,width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <i className="ti ti-chevron-left" style={{fontSize:16,color:C.text}} aria-hidden="true"/>
+            </button>
+            <div style={{flex:1,textAlign:"center",fontSize:13,fontWeight:600,color:C.text}}>{weekLabel(ws)}</div>
+            <button onClick={()=>setWo(w=>w+1)} style={{background:C.alt,border:"none",borderRadius:8,width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <i className="ti ti-chevron-right" style={{fontSize:16,color:C.text}} aria-hidden="true"/>
+            </button>
+          </div>
+        </div>
+        <div><Lbl>Jour</Lbl><select value={jour} onChange={e=>setJour(+e.target.value)} className="inp">{JOURS.map((j,i)=><option key={i} value={i}>{j}</option>)}</select></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div><Lbl>Début</Lbl><input type="time" value={hD} onChange={e=>setHD(e.target.value)} className="inp"/></div>
+          <div><Lbl>Fin</Lbl><input type="time" value={hF} onChange={e=>setHF(e.target.value)} className="inp"/></div>
+        </div>
+        <div><Lbl>Couleur</Lbl><PaletteRow selected={color} onChange={setColor}/></div>
+        <div><Lbl>Contenu</Lbl><textarea value={contenu} onChange={e=>setContenu(e.target.value)} rows={3} className="inp" style={{resize:"none"}}/></div>
+        <button className="btn-primary" onClick={submit}>Créer la copie</button>
+      </div>
+    </Modal>
+  );
+}
+
 function AddComp({onClose,onAdd}) {
   const [nom,setNom]=useState("");const [date,setDate]=useState("");const [lieu,setLieu]=useState("");const [niveau,setNiveau]=useState("Régional");
   return (
@@ -1315,4 +1450,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6k
+//v7
