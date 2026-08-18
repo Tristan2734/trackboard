@@ -424,7 +424,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
                   {nbNL>0&&<div style={{position:"absolute",top:10,right:12,width:8,height:8,borderRadius:"50%",background:C.danger}}/>}
                   {iPresent&&!isCoachCard&&(
-                    <div style={{position:"absolute",top:8,right:nbNL>0?24:10,background:"#D4A017",color:"#fff",borderRadius:6,padding:"2px 7px",fontSize:9,fontWeight:800,letterSpacing:.5,maxWidth:"60px"}}>✓ Je viens</div>
+                    <div style={{position:"absolute",bottom:8,left:58,background:"#D4A017",color:"#fff",borderRadius:6,padding:"2px 7px",fontSize:9,fontWeight:800,letterSpacing:.5}}>✓ Je viens</div>
                   )}
                   {isCoachCard&&<div style={{fontSize:8,fontWeight:800,color:"#9FD4A8",letterSpacing:1,marginBottom:6}}>COACH · {coaches.map(c=>c.prenom).join(", ")}</div>}
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -1315,4 +1315,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6j
+//v6k
