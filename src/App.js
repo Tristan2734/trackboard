@@ -429,9 +429,6 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
               return (
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
                   {nbNL>0&&<div style={{position:"absolute",top:10,right:12,width:8,height:8,borderRadius:"50%",background:C.danger}}/>}
-                  {iPresent&&!isCoachCard&&(
-                    
-                  )}
                   {isCoachCard&&<div style={{fontSize:8,fontWeight:800,color:"#9FD4A8",letterSpacing:1,marginBottom:6}}>COACH · {coaches.map(c=>c.prenom).join(", ")}</div>}
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <SeanceIcon type={s.type} size={36} light={isCoachCard}/>
@@ -994,13 +991,7 @@ function Comps({comps,athletesList,isCoach,user,onUpdateComp,onDeleteComp,onAdd}
 function InfoCompEditor({info,onSave}) {
   const [edit,setEdit]=useState(false);
   const [val,setVal]=useState(info);
-  if(!edit) return (
-    <button onClick={()=>setEdit(true)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,color:C.muted,fontWeight:600,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
-      <i className="ti ti-info-circle" style={{fontSize:13}} aria-hidden="true"/>
-      {info?"Modifier les infos":"Ajouter infos (horaires, convocations...)"}
-    </button>
-  );
-  return (
+  return edit ? (
     <div style={{marginBottom:10}}>
       <textarea value={val} onChange={e=>setVal(e.target.value)} rows={4} className="inp" style={{resize:"none",marginBottom:8}} placeholder="Horaires, programme, convocations..."/>
       <div style={{display:"flex",gap:8}}>
@@ -1008,6 +999,11 @@ function InfoCompEditor({info,onSave}) {
         <button className="btn-ghost" onClick={()=>setEdit(false)}>Annuler</button>
       </div>
     </div>
+  ) : (
+    <button onClick={()=>setEdit(true)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:12,color:C.muted,fontWeight:600,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+      <i className="ti ti-info-circle" style={{fontSize:13}} aria-hidden="true"/>
+      {info?"Modifier les infos":"Ajouter infos (horaires, convocations...)"}
+    </button>
   );
 }
 
@@ -1452,4 +1448,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v7b
+//v7d
