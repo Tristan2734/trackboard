@@ -143,9 +143,9 @@ function PaletteRow({selected, onChange}) {
   );
 }
 
-function Modal({children,onClose,title,full}) {
+function Modal({children,onClose,title,full,noBackdropClose}) {
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget&&!noBackdropClose)onClose();}}>
       <div className="slide-up" style={{width:"100%",maxWidth:480,maxHeight:full?"100vh":"92vh",overflowY:"auto",background:C.bg,borderRadius:full?"0":"20px 20px 0 0",padding:"0 0 48px"}}>
         <div style={{padding:"20px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:20,fontWeight:800,color:C.text}}>{title}</div>
@@ -958,21 +958,74 @@ function Cycles({cyclesList,athletesList,onAddCycle,onDeleteCycle,onUpdateCycle}
 }
 
 function CycleDetail({cycle,athletesList,onClose,onUpdate}) {
+  const [nom,setNom]=useState(cycle.nom||"");
   const [assignes,setAssignes]=useState(cycle.assignes||[]);
+  const [seances,setSeances]=useState(cycle.seances||[{nom:"",exercices:cycle.exercices||[]}]);
+  const [autoSaved,setAutoSaved]=useState(false);
+
+  useEffect(()=>{
+    setAutoSaved(true);
+    const t=setTimeout(()=>setAutoSaved(false),1200);
+    return()=>clearTimeout(t);
+  },[nom,assignes,seances]);
+
   function toggle(id){setAssignes(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);}
+  function addSc(){setSeances(p=>[...p,{nom:"",exercices:[{nom:"",series:4,reps:8,notes:""}]}]);}
+  function updScNom(si,v){setSeances(p=>p.map((s,i)=>i===si?{...s,nom:v}:s));}
+  function addEx(si){setSeances(p=>p.map((s,i)=>i===si?{...s,exercices:[...s.exercices,{nom:"",series:4,reps:8,notes:""}]}:s));}
+  function updEx(si,ei,f,v){setSeances(p=>p.map((s,i)=>i===si?{...s,exercices:s.exercices.map((e,j)=>j===ei?{...e,[f]:v}:e)}:s));}
+  function delEx(si,ei){setSeances(p=>p.map((s,i)=>i===si?{...s,exercices:s.exercices.filter((_,j)=>j!==ei)}:s));}
+  function delSc(si){setSeances(p=>p.filter((_,i)=>i!==si));}
+
   return (
-    <Modal onClose={onClose} title={cycle.nom} full>
-      {(cycle.seances||[{exercices:cycle.exercices||[]}]).map((sc,si)=>(
-        <div key={si} style={{marginBottom:14}}>
-          {(cycle.seances||[]).length>1&&<div style={{fontSize:12,fontWeight:800,color:C.green,marginBottom:6,padding:"4px 10px",background:C.greenLight,borderRadius:8,display:"inline-block"}}>{sc.nom||`Séance ${si+1}`}</div>}
-          <div className="card">{(sc.exercices||[]).map((e,ei)=><div key={ei} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:14,fontWeight:500}}>{e.nom}</span><span style={{fontSize:13,color:C.muted,fontWeight:300}}>{e.series}×{e.reps}{e.notes?` · ${e.notes}`:""}</span></div>)}</div>
+    <Modal onClose={onClose} title="Modifier le cycle" full noBackdropClose>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        {/* Indicateur autosave */}
+        {autoSaved&&<div style={{textAlign:"center",fontSize:11,color:C.green,fontWeight:600,padding:"4px",background:C.greenLight,borderRadius:8}}>✓ Modifications en cours</div>}
+
+        <div><Lbl>Nom du cycle</Lbl><input value={nom} onChange={e=>setNom(e.target.value)} placeholder="Ex: Force Max — Cycle 3" className="inp"/></div>
+
+        {seances.map((sc,si)=>(
+          <div key={si} style={{padding:"14px",borderRadius:14,background:C.alt}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:800,color:C.green}}>SÉANCE {si+1}</div>
+              {seances.length>1&&<button onClick={()=>delSc(si)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:12,fontWeight:600}}>✕ Supprimer</button>}
+            </div>
+            <input value={sc.nom} onChange={e=>updScNom(si,e.target.value)} placeholder="Nom (ex: Jour A...)" className="inp" style={{marginBottom:10,background:C.surface}}/>
+            {(sc.exercices||[]).map((e,ei)=>(
+              <div key={ei} style={{padding:"10px",borderRadius:10,background:C.surface,marginBottom:6}}>
+                <div style={{display:"flex",gap:6,marginBottom:6}}>
+                  <input value={e.nom} onChange={ev=>updEx(si,ei,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1}}/>
+                  <button onClick={()=>delEx(si,ei)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                  {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
+                    <input key={f} value={e[f]||""} onChange={ev=>updEx(si,ei,f,ev.target.value)} placeholder={ph} className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <button onClick={()=>addEx(si)} style={{width:"100%",padding:"8px",borderRadius:8,border:`1.5px dashed ${C.border}`,background:"transparent",color:C.muted,cursor:"pointer",fontSize:12,fontWeight:600}}>+ Exercice</button>
+          </div>
+        ))}
+
+        <button onClick={addSc} style={{width:"100%",padding:"12px",borderRadius:12,border:`2px dashed ${C.green}`,background:C.greenLight,color:C.green,cursor:"pointer",fontSize:13,fontWeight:700}}>+ Ajouter une séance au cycle</button>
+
+        <div>
+          <Lbl>Assigner à</Lbl>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {athletesList.map(a=>(
+              <button key={a.id} onClick={()=>toggle(a.id)} style={{padding:"7px 14px",borderRadius:10,border:`1.5px solid ${assignes.includes(a.id)?C.green:C.border}`,background:assignes.includes(a.id)?C.greenLight:C.surface,color:assignes.includes(a.id)?C.green:C.muted,fontSize:13,fontWeight:assignes.includes(a.id)?700:400,cursor:"pointer"}}>
+                {a.prenom} {a.nom[0]}.
+              </button>
+            ))}
+          </div>
         </div>
-      ))}
-      <Lbl>Assigner à</Lbl>
-      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
-        {athletesList.map(a=><button key={a.id} onClick={()=>toggle(a.id)} style={{padding:"7px 14px",borderRadius:10,border:`1.5px solid ${assignes.includes(a.id)?C.green:C.border}`,background:assignes.includes(a.id)?C.greenLight:C.surface,color:assignes.includes(a.id)?C.green:C.muted,fontSize:13,fontWeight:assignes.includes(a.id)?700:400,cursor:"pointer"}}>{a.prenom} {a.nom[0]}.</button>)}
+
+        <button className="btn-primary" onClick={()=>onUpdate({...cycle,nom,seances,assignes})}>
+          Sauvegarder les modifications
+        </button>
       </div>
-      <button className="btn-primary" onClick={()=>onUpdate({...cycle,assignes})}>Sauvegarder</button>
     </Modal>
   );
 }
@@ -1133,7 +1186,7 @@ function AddCycle({athletesList,onClose,onAdd}) {
   function delEx(si,ei){setSeances(p=>p.map((s,i)=>i===si?{...s,exercices:s.exercices.filter((_,j)=>j!==ei)}:s));}
   function toggle(id){setAssignes(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);}
   return (
-    <Modal onClose={onClose} title="Nouveau cycle" full>
+    <Modal onClose={onClose} title="Nouveau cycle" full noBackdropClose>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div><Lbl>Nom du cycle</Lbl><input value={nom} onChange={e=>setNom(e.target.value)} placeholder="Ex: Force Max — Cycle 3" className="inp"/></div>
         {seances.map((sc,si)=>(
@@ -1225,4 +1278,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v6
+//v6c
