@@ -295,7 +295,10 @@ export default function App() {
     seancesList.filter(s=>{
       if(s.jour!==i)return false;
       if(s.weekOffset!==weekOffset)return false;
-      if(filterGroupe!=="all"&&s.groupe&&s.groupe!==filterGroupe)return false;
+      if(filterGroupe!=="all"){
+        if(s.groupe&&s.groupe!==filterGroupe)return false;
+        if(!s.groupe&&(s.athletes||[]).length>0)return false;
+      }
       if(filterMine&&!(s.presences||{})[user.id])return false;
       if(filterAthlete!=="all"&&!(s.presences||{})[filterAthlete])return false;
       return true;
@@ -495,6 +498,8 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   const [contenu,setContenu]=useState(seance.contenu||"");
   const [editColor,setEditColor]=useState(false);
   const [color,setColor]=useState(seance.color||"");
+  const [editGroupe,setEditGroupe]=useState(false);
+  const [groupeVal,setGroupeVal]=useState(seance.groupe||"");
   const [editHoraires,setEditHoraires]=useState(false);
   const [jour,setJour]=useState(seance.jour??0);
   const [hD,setHD]=useState(seance.heureDebut||"10:00");
@@ -503,6 +508,7 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   function saveContenu(){onUpdate(seance.id,{contenu});setEditContenu(false);}
   function saveColor(c){setColor(c);onUpdate(seance.id,{color:c});setEditColor(false);}
   function saveHoraires(){onUpdate(seance.id,{jour,heureDebut:hD,heureFin:hF});setEditHoraires(false);}
+  function saveGroupe(g){setGroupeVal(g);onUpdate(seance.id,{groupe:g});setEditGroupe(false);}
 
   return (
     <Modal onClose={onClose} title={`${seance.heureDebut} – ${seance.heureFin}`}>
@@ -510,7 +516,18 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
       <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
         <SeanceIcon type={seance.type} size={32}/>
         <span style={{fontSize:14,fontWeight:700,color:C.text,textTransform:"capitalize"}}>{seance.type}</span>
-        {seance.groupe&&<span className="tag" style={{background:C.alt,color:C.muted,padding:"5px 10px"}}>{seance.groupe}</span>}
+        {/* Groupe éditable */}
+        <div style={{position:"relative"}}>
+          <button onClick={()=>setEditGroupe(!editGroupe)} style={{background:groupeVal?C.greenLight:C.alt,border:`1px solid ${groupeVal?C.green:C.border}`,borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,color:groupeVal?C.green:C.muted,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+            {groupeVal||"Groupe"} <i className="ti ti-pencil" style={{fontSize:10}} aria-hidden="true"/>
+          </button>
+          {editGroupe&&(
+            <div style={{position:"absolute",top:"100%",left:0,zIndex:10,background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,padding:8,display:"flex",flexDirection:"column",gap:4,minWidth:130,boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+              <button onClick={()=>saveGroupe("")} style={{padding:"6px 10px",borderRadius:6,border:"none",background:!groupeVal?C.greenLight:"transparent",color:!groupeVal?C.green:C.muted,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left"}}>Aucun groupe</button>
+              {GROUPES.map(g=><button key={g} onClick={()=>saveGroupe(g)} style={{padding:"6px 10px",borderRadius:6,border:"none",background:groupeVal===g?C.greenLight:"transparent",color:groupeVal===g?C.green:C.muted,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left"}}>{g}</button>)}
+            </div>
+          )}
+        </div>
         {seance.lieu&&<span className="tag" style={{background:C.alt,color:C.muted,padding:"5px 10px"}}>📍 {seance.lieu}</span>}
         <button onClick={()=>setEditColor(!editColor)} style={{background:"none",border:"none",cursor:"pointer",padding:"4px",display:"flex",alignItems:"center",gap:4}}>
           <div style={{width:16,height:16,borderRadius:"50%",background:color||C.alt,border:`1.5px solid ${C.border}`}}/>
@@ -873,12 +890,13 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
       </div>
 
       {/* Infos athlète */}
-      {(user.categorie||user.club||user.sexe)&&(
+      {(user.categorie||user.club||user.sexe||user.licence)&&(
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
           {user.categorie&&<span className="chip chip-on" style={{fontSize:11}}>{user.categorie}</span>}
           {user.sexe&&<span style={{padding:"4px 10px",borderRadius:20,background:C.alt,color:C.muted,fontSize:11,fontWeight:600}}>{user.sexe}</span>}
           {user.club&&<span style={{padding:"4px 10px",borderRadius:20,background:C.alt,color:C.muted,fontSize:11,fontWeight:600}}>🏟 {user.club}</span>}
           {user.groupe&&<span style={{padding:"4px 10px",borderRadius:20,background:C.greenLight,color:C.green,fontSize:11,fontWeight:700}}>{user.groupe}</span>}
+          {user.licence&&<span style={{padding:"4px 10px",borderRadius:20,background:C.alt,color:C.muted,fontSize:11,fontWeight:600}}>🪪 {user.licence}</span>}
         </div>
       )}
 
@@ -1560,4 +1578,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v8
+//v8b
