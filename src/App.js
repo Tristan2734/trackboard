@@ -344,7 +344,7 @@ export default function App() {
       <div className="fade">
         {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} filterAthlete={filterAthlete} setFilterAthlete={setFilterAthlete} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)}/>}
         {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach}/>}
-        {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach}/>}
+        {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach} onSelSeance={setSelSeance}/>}
         {view==="comps"&&<Comps comps={comps} athletesList={athletesList} isCoach={isCoach} user={user} onUpdateComp={updateComp} onDeleteComp={deleteComp} onAdd={()=>setShowAddComp(true)}/>}
         {view==="cycles"&&isCoach&&<Cycles cyclesList={cyclesList} athletesList={athletesList} onAddCycle={addCycle} onDeleteCycle={deleteCycle} onUpdateCycle={updateCycle}/>}
       </div>
@@ -366,7 +366,7 @@ export default function App() {
       {showDuplicate&&<DuplicateSeanceModal seance={showDuplicate} onClose={()=>setShowDuplicate(null)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id,presences:{[user.id]:"present"}});setShowDuplicate(null);}} cyclesList={cyclesList} currentWeekOffset={weekOffset}/>}
       {showLog&&<LogModal seance={showLog.seance} athleteId={showLog.athleteId} existing={logs[`${showLog.athleteId}_${showLog.seance.id}`]} cyclesList={cyclesList} onClose={()=>setShowLog(null)} onSave={data=>{saveLog(showLog.seance.id,showLog.athleteId,data);setShowLog(null);}}/>}
       {showAddSeance&&<AddSeance onClose={()=>setShowAddSeance(false)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowAddSeance(false);}} athletesList={athletesList} cyclesList={cyclesList} user={user} currentWeekOffset={weekOffset}/>}
-      {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach}/></Modal>}
+      {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach} onSelSeance={s=>{setSelAthlete(null);setSelSeance(s);}}/></Modal>}
       {showAddComp&&<AddComp onClose={()=>setShowAddComp(false)} onAdd={data=>{addComp(data);setShowAddComp(false);}}/>}
       {showProfile&&<ProfileModal user={user} onClose={()=>setShowProfile(false)} onSave={data=>{const u={...user,...data};saveUser(user.id,u);localStorage.setItem("tb_user",JSON.stringify(u));setUser(u);setShowProfile(false);}} onLogout={logout}/>}
       {showNotifs&&!isCoach&&(
@@ -842,7 +842,7 @@ function CycleCard({cycle}) {
   );
 }
 
-function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,isCoach}) {
+function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,isCoach,onSelSeance}) {
   const viewerId=user.id;
   const mySeances=seancesList.filter(s=>(s.presences||{})[user.id]==="present");
 
@@ -869,12 +869,19 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
   const byWeek={};
   mySeances.forEach(s=>{
     const log=logs[`${user.id}_${s.id}`];
-    const ts=log?.ts||0;
-    const d=ts?new Date(ts):new Date();
-    const wStart=new Date(d);wStart.setDate(d.getDate()-((d.getDay()||7)-1));wStart.setHours(0,0,0,0);
-    const wk=weekLabel(wStart);
+    // Utiliser le weekOffset de la séance pour trouver la vraie semaine
+    const ws=weekStart(s.weekOffset||0);
+    const dayDate=new Date(ws);
+    dayDate.setDate(ws.getDate()+(s.jour||0));
+    const wk=weekLabel(ws);
     if(!byWeek[wk])byWeek[wk]=[];
-    byWeek[wk].push({s,log});
+    byWeek[wk].push({s,log,dayDate});
+  });
+  // Trier les semaines par date décroissante
+  const byWeekSorted=Object.entries(byWeek).sort((a,b)=>{
+    const wa=weekStart(a[1][0]?.s?.weekOffset||0);
+    const wb=weekStart(b[1][0]?.s?.weekOffset||0);
+    return wb-wa;
   });
 
   return (
@@ -954,18 +961,19 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
       {/* Historique */}
       <div style={{fontSize:13,fontWeight:800,color:C.text,marginBottom:12}}>📅 Historique des séances</div>
       <SeanceSearch mySeances={mySeances} logs={logs} userId={user.id} notifs={notifs} onShowLog={onShowLog}/>
-      {Object.keys(byWeek).length===0&&<p className="empty">Aucune séance cochée.</p>}
-      {Object.entries(byWeek).map(([wk,items])=>(
+      {byWeekSorted.length===0&&<p className="empty">Aucune séance cochée.</p>}
+      {byWeekSorted.map(([wk,items])=>(
         <div key={wk} style={{marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:700,color:C.green,letterSpacing:.5,marginBottom:6,padding:"4px 10px",background:C.greenLight,borderRadius:8,display:"inline-block"}}>{wk}</div>
-          {items.map(({s,log})=>{
+          {items.sort((a,b)=>(a.s.jour||0)-(b.s.jour||0)).map(({s,log})=>{
             const need=notifs[`${user.id}_${s.id}`];
             return (
-              <div key={s.id} onClick={()=>onShowLog({seance:s,athleteId:user.id})} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:14,background:need?C.dangerBg:C.surface,border:`1px solid ${need?C.dangerBorder:C.border}`,marginBottom:6,cursor:"pointer"}}>
+              <div key={s.id} onClick={()=>onSelSeance?onSelSeance(s):onShowLog({seance:s,athleteId:user.id})} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:14,background:need?C.dangerBg:C.surface,border:`1px solid ${need?C.dangerBorder:C.border}`,marginBottom:6,cursor:"pointer"}}>
                 <SeanceIcon type={s.type} size={34}/>
                 <div style={{flex:1}}>
                   <div style={{fontSize:14,fontWeight:700}}>{JOURS[s.jour]} · {s.heureDebut}</div>
-                  {log?<div style={{fontSize:12,color:C.muted,fontWeight:300}}>Forme {log.forme}/10 · Diff. {log.difficulte}/10 · Fatigue {log.fatigue}/10</div>:<div style={{fontSize:12,color:need?C.danger:C.light,fontWeight:need?600:300}}>{need?"Bilan à remplir":"—"}</div>}
+                  {s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.contenu}</div>}
+                  {log?<div style={{fontSize:12,color:C.green,fontWeight:500}}>✓ Bilan rempli · Forme {log.forme}/10</div>:<div style={{fontSize:12,color:need?C.danger:C.light,fontWeight:need?600:300}}>{need?"Bilan à remplir":"—"}</div>}
                 </div>
                 <i className="ti ti-chevron-right" style={{fontSize:16,color:C.light}} aria-hidden="true"/>
               </div>
@@ -1578,4 +1586,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v8b
+//v8c
