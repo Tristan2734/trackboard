@@ -247,6 +247,7 @@ export default function App() {
   const [meteo,setMeteo]=useState(null);
   const [filterGroupe,setFilterGroupe]=useState("all");
   const [filterMine,setFilterMine]=useState(false);
+  const [filterAthlete,setFilterAthlete]=useState("all");
   const [showDuplicate,setShowDuplicate]=useState(null);
 
   useEffect(()=>{
@@ -268,6 +269,7 @@ export default function App() {
 
   const handleLogin=(u,coach)=>{setUser(u);setIsCoach(coach);};
   const logout=()=>{localStorage.removeItem("tb_user");setUser(null);setIsCoach(false);};
+  const [showNotifs,setShowNotifs]=useState(false);
 
   if(!user) return <Login onLogin={handleLogin}/>;
 
@@ -295,6 +297,7 @@ export default function App() {
       if(s.weekOffset!==weekOffset)return false;
       if(filterGroupe!=="all"&&s.groupe&&s.groupe!==filterGroupe)return false;
       if(filterMine&&!(s.presences||{})[user.id])return false;
+      if(filterAthlete!=="all"&&!(s.presences||{})[filterAthlete])return false;
       return true;
     }).sort((a,b)=>(a.heureDebut||"").localeCompare(b.heureDebut||""))
   );
@@ -330,13 +333,13 @@ export default function App() {
               <span style={{fontSize:13,fontWeight:700,color:C.text}}>{meteo.t}°</span>
             </div>
           )}
-          {nbNotifs>0&&<div style={{background:C.danger,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700}}>{nbNotifs}</div>}
+          {nbNotifs>0&&<div onClick={()=>!isCoach&&setShowNotifs(true)} style={{background:C.danger,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:isCoach?"default":"pointer"}}>{nbNotifs}</div>}
           <div onClick={()=>setShowProfile(true)} style={{cursor:"pointer"}}><Avatar nom={user.nom} prenom={user.prenom} photo={user.photo} size={36}/></div>
         </div>
       </div>
 
       <div className="fade">
-        {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)}/>}
+        {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} filterAthlete={filterAthlete} setFilterAthlete={setFilterAthlete} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)}/>}
         {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach}/>}
         {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach}/>}
         {view==="comps"&&<Comps comps={comps} athletesList={athletesList} isCoach={isCoach} user={user} onUpdateComp={updateComp} onDeleteComp={deleteComp} onAdd={()=>setShowAddComp(true)}/>}
@@ -357,17 +360,34 @@ export default function App() {
         setSelSeance(prev=>prev?{...prev,presences:{...(prev.presences||{}),...(localPresences[prev.id]||{}),[uid]:st}}:prev);
         setPresence(sid,uid,st);
       }} onShowLog={setShowLog} onDelete={id=>{deleteSeance(id);setSelSeance(null);}} onUpdate={handleUpdateSeance} onDuplicate={handleDuplicate}/>}
-      {showDuplicate&&<DuplicateSeanceModal seance={showDuplicate} onClose={()=>setShowDuplicate(null)} onAdd={(data)=>{addSeance({...data,weekOffset,createdBy:user.id});setShowDuplicate(null);}} cyclesList={cyclesList} currentWeekOffset={weekOffset}/>}
+      {showDuplicate&&<DuplicateSeanceModal seance={showDuplicate} onClose={()=>setShowDuplicate(null)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id,presences:{[user.id]:"present"}});setShowDuplicate(null);}} cyclesList={cyclesList} currentWeekOffset={weekOffset}/>}
       {showLog&&<LogModal seance={showLog.seance} athleteId={showLog.athleteId} existing={logs[`${showLog.athleteId}_${showLog.seance.id}`]} cyclesList={cyclesList} onClose={()=>setShowLog(null)} onSave={data=>{saveLog(showLog.seance.id,showLog.athleteId,data);setShowLog(null);}}/>}
       {showAddSeance&&<AddSeance onClose={()=>setShowAddSeance(false)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowAddSeance(false);}} athletesList={athletesList} cyclesList={cyclesList} user={user} currentWeekOffset={weekOffset}/>}
       {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach}/></Modal>}
       {showAddComp&&<AddComp onClose={()=>setShowAddComp(false)} onAdd={data=>{addComp(data);setShowAddComp(false);}}/>}
       {showProfile&&<ProfileModal user={user} onClose={()=>setShowProfile(false)} onSave={data=>{const u={...user,...data};saveUser(user.id,u);localStorage.setItem("tb_user",JSON.stringify(u));setUser(u);setShowProfile(false);}} onLogout={logout}/>}
+      {showNotifs&&!isCoach&&(
+        <Modal onClose={()=>setShowNotifs(false)} title="Bilans à remplir 📝">
+          {seancesList.filter(s=>(s.presences||{})[user.id]==="present"&&notifs[`${user.id}_${s.id}`]).length===0
+            ?<p className="empty">Tous tes bilans sont à jour ✓</p>
+            :seancesList.filter(s=>(s.presences||{})[user.id]==="present"&&notifs[`${user.id}_${s.id}`]).map(s=>(
+              <div key={s.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:`1px solid ${C.border}`}}>
+                <SeanceIcon type={s.type} size={36}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700}}>{JOURS[s.jour]} · {s.heureDebut}–{s.heureFin}</div>
+                  <div style={{fontSize:12,color:C.danger,fontWeight:500}}>Bilan non rempli</div>
+                  {s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginTop:2}}>{s.contenu}</div>}
+                </div>
+              </div>
+            ))
+          }
+        </Modal>
+      )}
     </div>
   );
 }
 
-function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd}) {
+function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd}) {
   return (
     <div>
       <div style={{padding:"12px 20px 8px"}}>
@@ -391,10 +411,17 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
             Mes séances
           </button>
           {["all",...GROUPES].map(g=>(
-            <button key={g} onClick={()=>setFilterGroupe(g)} className={`chip ${filterGroupe===g?"chip-on":"chip-off"}`} style={{flexShrink:0}}>
+            <button key={g} onClick={()=>{setFilterGroupe(g);setFilterAthlete("all");}} className={`chip ${filterGroupe===g&&filterAthlete==="all"?"chip-on":"chip-off"}`} style={{flexShrink:0}}>
               {g==="all"?"Tous":g}
             </button>
           ))}
+        </div>
+        {/* Filtre par athlète */}
+        <div style={{marginTop:8}}>
+          <select value={filterAthlete} onChange={e=>{setFilterAthlete(e.target.value);if(e.target.value!=="all"){setFilterGroupe("all");setFilterMine(false);}}} className="inp" style={{fontSize:13,padding:"8px 12px",color:filterAthlete!=="all"?C.green:C.muted,fontWeight:filterAthlete!=="all"?700:400,borderColor:filterAthlete!=="all"?C.green:C.border}}>
+            <option value="all">👥 Voir un athlète en particulier...</option>
+            {athletesList.sort((a,b)=>a.prenom.localeCompare(b.prenom)).map(a=><option key={a.id} value={a.id}>{a.prenom} {a.nom}{a.groupe?` · ${a.groupe}`:""}</option>)}
+          </select>
         </div>
       </div>
 
@@ -779,10 +806,48 @@ function SeanceSearch({mySeances,logs,userId,notifs,onShowLog}) {
   );
 }
 
+function CycleCard({cycle}) {
+  return (
+    <div className="card" style={{marginBottom:8}}>
+      <div style={{fontSize:15,fontWeight:800,marginBottom:6}}>{cycle.nom}</div>
+      {(cycle.seances||[{exercices:cycle.exercices||[]}]).map((sc,si)=>(
+        <div key={si} style={{marginBottom:6}}>
+          {(cycle.seances||[]).length>1&&<div style={{fontSize:11,fontWeight:700,color:C.green,marginBottom:4}}>{sc.nom||`Séance ${si+1}`}</div>}
+          {(sc.exercices||[]).map((e,ei)=>(
+            <div key={ei} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderTop:`1px solid ${C.border}`}}>
+              <span style={{fontSize:13}}>{e.nom}</span>
+              <span style={{fontSize:12,color:C.muted,fontWeight:300}}>{e.series}×{e.reps}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,isCoach}) {
   const viewerId=user.id;
   const mySeances=seancesList.filter(s=>(s.presences||{})[user.id]==="present");
-  const myCycles=cyclesList.filter(c=>(c.assignes||[]).includes(user.id));
+
+  // Cycles : actifs vs archivés
+  const allMyCycles=cyclesList.filter(c=>{
+    const a=c.assignes;
+    if(!a)return false;
+    if(Array.isArray(a))return a.includes(user.id);
+    return a[user.id]!==undefined;
+  });
+  const activeCycles=allMyCycles.filter(c=>{
+    const a=c.assignes;
+    if(Array.isArray(a))return true; // ancien format = actif
+    return a[user.id]?.actif!==false;
+  });
+  const archivedCycles=allMyCycles.filter(c=>{
+    const a=c.assignes;
+    if(Array.isArray(a))return false;
+    return a[user.id]?.actif===false;
+  });
+
+  const [muscuTab,setMuscuTab]=useState("actif");
 
   const byWeek={};
   mySeances.forEach(s=>{
@@ -807,6 +872,16 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
         ))}
       </div>
 
+      {/* Infos athlète */}
+      {(user.categorie||user.club||user.sexe)&&(
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+          {user.categorie&&<span className="chip chip-on" style={{fontSize:11}}>{user.categorie}</span>}
+          {user.sexe&&<span style={{padding:"4px 10px",borderRadius:20,background:C.alt,color:C.muted,fontSize:11,fontWeight:600}}>{user.sexe}</span>}
+          {user.club&&<span style={{padding:"4px 10px",borderRadius:20,background:C.alt,color:C.muted,fontSize:11,fontWeight:600}}>🏟 {user.club}</span>}
+          {user.groupe&&<span style={{padding:"4px 10px",borderRadius:20,background:C.greenLight,color:C.green,fontSize:11,fontWeight:700}}>{user.groupe}</span>}
+        </div>
+      )}
+
       {(user.records&&Object.values(user.records).some(Boolean))&&(
         <div style={{marginBottom:20}}>
           <Lbl>Records</Lbl>
@@ -821,25 +896,35 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
         </div>
       )}
 
-      {myCycles.length>0&&(
-        <div style={{marginBottom:20}}>
-          <Lbl>Cycles muscu en cours</Lbl>
-          {myCycles.map(c=>(
-            <div key={c.id} className="card" style={{marginBottom:8}}>
-              <div style={{fontSize:15,fontWeight:800,marginBottom:8}}>{c.nom}</div>
-              {(c.seances||[{exercices:c.exercices||[]}]).map((sc,si)=>(
-                <div key={si} style={{marginBottom:8}}>
-                  {(c.seances||[]).length>1&&<div style={{fontSize:11,fontWeight:700,color:C.green,marginBottom:4}}>{sc.nom||`Séance ${si+1}`}</div>}
-                  {(sc.exercices||[]).map((e,ei)=>(
-                    <div key={ei} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:`1px solid ${C.border}`}}>
-                      <span style={{fontSize:13}}>{e.nom}</span>
-                      <span style={{fontSize:12,color:C.muted,fontWeight:300}}>{e.series}×{e.reps}</span>
-                    </div>
-                  ))}
-                </div>
+      {allMyCycles.length>0&&(
+        <div style={{marginBottom:24}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:800,color:C.text}}>🏋️ Muscu</div>
+            <div style={{display:"flex",gap:6}}>
+              {["actif","historique"].map(t=>(
+                <button key={t} onClick={()=>setMuscuTab(t)} style={{padding:"4px 12px",borderRadius:8,border:`1.5px solid ${muscuTab===t?C.green:C.border}`,background:muscuTab===t?C.greenLight:"transparent",color:muscuTab===t?C.green:C.muted,fontSize:11,fontWeight:700,cursor:"pointer",textTransform:"capitalize"}}>
+                  {t==="actif"?"En cours":"Historique"}
+                </button>
               ))}
             </div>
-          ))}
+          </div>
+          {muscuTab==="actif"&&(
+            activeCycles.length===0
+              ?<p className="empty">Aucun cycle actif.</p>
+              :activeCycles.map(c=><CycleCard key={c.id} cycle={c}/>)
+          )}
+          {muscuTab==="historique"&&(
+            archivedCycles.length===0
+              ?<p className="empty">Aucun cycle archivé.</p>
+              :archivedCycles.map(c=>(
+                <div key={c.id} style={{opacity:.65}}>
+                  <CycleCard cycle={c}/>
+                  <div style={{fontSize:11,color:C.muted,fontWeight:300,marginTop:-6,marginBottom:8,paddingLeft:4}}>
+                    Archivé le {c.assignes[user.id]?.dateFin?new Date(c.assignes[user.id].dateFin).toLocaleDateString("fr-FR"):"—"}
+                  </div>
+                </div>
+              ))
+          )}
         </div>
       )}
 
@@ -911,7 +996,7 @@ function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach}) {
                 <Avatar nom={a.nom} prenom={a.prenom} photo={a.photo} size={44}/>
                 <div style={{flex:1}}>
                   <div style={{fontSize:15,fontWeight:700}}>{a.prenom} {a.nom}{a.role==="coach"&&<span style={{marginLeft:6,fontSize:10,background:C.amberBg,color:C.amber,padding:"2px 6px",borderRadius:5,fontWeight:700}}>COACH</span>}</div>
-                  <div style={{fontSize:12,color:C.muted,fontWeight:300,marginTop:2}}>{nb} séance{nb>1?"s":""}{a.groupe?<span style={{marginLeft:4,padding:"1px 6px",background:C.greenLight,color:C.green,borderRadius:4,fontWeight:600,fontSize:11}}>· {a.groupe}</span>:""}</div>
+                  <div style={{fontSize:12,color:C.muted,fontWeight:300,marginTop:2,display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}><span>{nb} séance{nb>1?"s":""}</span>{a.groupe&&<span style={{padding:"1px 6px",background:C.greenLight,color:C.green,borderRadius:4,fontWeight:600,fontSize:11}}>{a.groupe}</span>}{a.categorie&&<span style={{padding:"1px 6px",background:C.alt,color:C.muted,borderRadius:4,fontWeight:600,fontSize:11}}>{a.categorie}</span>}{a.club&&<span style={{fontSize:11,color:C.light}}>· {a.club}</span>}</div>
                 </div>
               </div>
               {nbn>0&&<div style={{width:22,height:22,borderRadius:"50%",background:C.danger,color:"#fff",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"}}>{nbn}</div>}
@@ -980,7 +1065,7 @@ function Comps({comps,athletesList,isCoach,user,onUpdateComp,onDeleteComp,onAdd}
                 </div>
               </div>
             )}
-            {isCoach&&<button className="btn-danger" onClick={()=>{if(window.confirm("Supprimer ?"))onDeleteComp(c.id);}} style={{marginTop:12,padding:"10px"}}>Supprimer</button>}
+            {isCoach&&<button onClick={()=>{if(window.confirm("Supprimer cette compétition ?"))onDeleteComp(c.id);}} style={{marginTop:12,padding:"5px 12px",borderRadius:8,border:`1px solid ${C.danger}`,background:"transparent",color:C.danger,fontSize:11,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}><i className="ti ti-trash" style={{fontSize:12}} aria-hidden="true"/>Supprimer</button>}
           </div>
         );
       })}
@@ -1063,7 +1148,7 @@ function Cycles({cyclesList,athletesList,onAddCycle,onDeleteCycle,onUpdateCycle}
       </div>
       {filtered.length===0&&<p className="empty">Aucun cycle. Crée-en un !</p>}
       {filtered.map(c=>{
-        const asgn=athletesList.filter(a=>(c.assignes||[]).includes(a.id));
+        const asgn=athletesList.filter(a=>{const as=c.assignes;if(!as)return false;if(Array.isArray(as))return as.includes(a.id);return as[a.id]&&as[a.id].actif!==false;});
         const nbEx=(c.seances||[{exercices:c.exercices||[]}]).reduce((s,sc)=>s+(sc.exercices||[]).length,0);
         const nbSc=(c.seances||[]).length||1;
         return (
@@ -1084,7 +1169,12 @@ function Cycles({cyclesList,athletesList,onAddCycle,onDeleteCycle,onUpdateCycle}
 
 function CycleDetail({cycle,athletesList,onClose,onUpdate}) {
   const [nom,setNom]=useState(cycle.nom||"");
-  const [assignes,setAssignes]=useState(cycle.assignes||[]);
+  // Support ancien format (array) et nouveau format (objet)
+  const [assignes,setAssignes]=useState(()=>{
+    const a=cycle.assignes;
+    if(!a||Array.isArray(a))return a||[];
+    return a;
+  });
   const [seances,setSeances]=useState(cycle.seances||[{nom:"",exercices:cycle.exercices||[]}]);
   const [autoSaved,setAutoSaved]=useState(false);
 
@@ -1094,7 +1184,9 @@ function CycleDetail({cycle,athletesList,onClose,onUpdate}) {
     return()=>clearTimeout(t);
   },[nom,assignes,seances]);
 
-  function toggle(id){setAssignes(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);}
+  function isAssigned(id){if(Array.isArray(assignes))return assignes.includes(id);return assignes[id]&&assignes[id].actif!==false;}
+
+  function toggle(id){setAssignes(prev=>{if(Array.isArray(prev)){const obj={};prev.forEach(x=>obj[x]={actif:true,dateDebut:Date.now()});if(obj[id]){obj[id]={actif:false,dateFin:Date.now()};}else{obj[id]={actif:true,dateDebut:Date.now()};}return obj;}const obj={...prev};if(obj[id]&&obj[id].actif!==false){obj[id]={...obj[id],actif:false,dateFin:Date.now()};}else{obj[id]={actif:true,dateDebut:Date.now()};}return obj;});}
   function addSc(){setSeances(p=>[...p,{nom:"",exercices:[{nom:"",series:4,reps:8,notes:""}]}]);}
   function updScNom(si,v){setSeances(p=>p.map((s,i)=>i===si?{...s,nom:v}:s));}
   function addEx(si){setSeances(p=>p.map((s,i)=>i===si?{...s,exercices:[...s.exercices,{nom:"",series:4,reps:8,notes:""}]}:s));}
@@ -1139,11 +1231,16 @@ function CycleDetail({cycle,athletesList,onClose,onUpdate}) {
         <div>
           <Lbl>Assigner à</Lbl>
           <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-            {athletesList.map(a=>(
-              <button key={a.id} onClick={()=>toggle(a.id)} style={{padding:"7px 14px",borderRadius:10,border:`1.5px solid ${assignes.includes(a.id)?C.green:C.border}`,background:assignes.includes(a.id)?C.greenLight:C.surface,color:assignes.includes(a.id)?C.green:C.muted,fontSize:13,fontWeight:assignes.includes(a.id)?700:400,cursor:"pointer"}}>
-                {a.prenom} {a.nom[0]}.
-              </button>
-            ))}
+            {athletesList.map(a=>{
+              const active=isAssigned(a.id);
+              const archived=!Array.isArray(assignes)&&assignes[a.id]&&assignes[a.id].actif===false;
+              return(
+                <button key={a.id} onClick={()=>toggle(a.id)} style={{padding:"7px 14px",borderRadius:10,border:`1.5px solid ${active?C.green:archived?"#D4A017":C.border}`,background:active?C.greenLight:archived?"#FFF8E8":"transparent",color:active?C.green:archived?"#B8860B":C.muted,fontSize:13,fontWeight:active?700:400,cursor:"pointer",position:"relative"}}>
+                  {a.prenom} {a.nom[0]}.
+                  {archived&&<span style={{fontSize:9,marginLeft:4,opacity:.7}}>archivé</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1360,7 +1457,7 @@ function DuplicateSeanceModal({seance,onClose,onAdd,cyclesList,currentWeekOffset
 
   function submit(){
     const {id,presences,...rest}=seance;
-    onAdd({...rest,jour,heureDebut:hD,heureFin:hF,contenu,color,weekOffset:wo,presences:{}});
+    onAdd({...rest,jour,heureDebut:hD,heureFin:hF,contenu,color},wo);
   }
 
   return (
@@ -1413,7 +1510,10 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
   const [prenom,setPrenom]=useState(user.prenom||"");const [nom,setNom]=useState(user.nom||"");
   const [sexe,setSexe]=useState(user.sexe||"");const [groupe,setGroupe]=useState(user.groupe||"");
   const [photo,setPhoto]=useState(user.photo||"");const [records,setRecords]=useState(user.records||{});
-  const recKeys=sexe==="Femme"?["Pentathlon","Heptathlon"]:["Décathlon","Heptathlon"];
+  const [categorie,setCategorie]=useState(user.categorie||"");
+  const [club,setClub]=useState(user.club||"");
+  const CATEGORIES=["U16","U18","U20","U23","Sénior","Master"];
+  const recKeys=sexe==="Femme"?["Pentathlon","Heptathlon","Décathlon"]:["Décathlon","Heptathlon"];
   function handlePhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
   return (
     <Modal onClose={onClose} title="Mon profil" full>
@@ -1441,11 +1541,23 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
               <input value={records[k]||""} onChange={e=>setRecords(p=>({...p,[k]:e.target.value}))} placeholder={`Record ${k}`} className="inp"/>
             </div>
           ))}
+          <div>
+            <Lbl>Catégorie</Lbl>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {CATEGORIES.map(c=>(
+                <button key={c} onClick={()=>setCategorie(c===categorie?"":c)} className={`chip ${categorie===c?"chip-on":"chip-off"}`}>{c}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Lbl>Club</Lbl>
+            <input value={club} onChange={e=>setClub(e.target.value)} placeholder="Nom de ton club" className="inp"/>
+          </div>
         </div>
-        <button className="btn-primary" onClick={()=>onSave({prenom,nom,sexe,groupe,photo,records})}>Sauvegarder</button>
+        <button className="btn-primary" onClick={()=>onSave({prenom,nom,sexe,groupe,photo,records,categorie,club})}>Sauvegarder</button>
         <button onClick={onLogout} className="btn-ghost" style={{width:"100%"}}>Se déconnecter</button>
       </div>
     </Modal>
   );
 }
-//v7f
+//v8
