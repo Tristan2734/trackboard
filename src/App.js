@@ -699,10 +699,15 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
       <Slider label="Difficulté de la séance" value={difficulte} onChange={setDifficulte} color={C.amber}/>
       <Slider label="Fatigue après la séance" value={fatigue} onChange={setFatigue} color={C.danger}/>
 
-      {seance.type==="muscu"&&(
+      {(seance.type==="muscu"||seance.cycleId)&&(
         <>
           {cycle&&<div style={{padding:"8px 12px",borderRadius:10,background:C.greenLight,marginBottom:14,fontSize:12,fontWeight:700,color:C.green}}>◆ {cycle.nom}{seance.seanceName?` · ${seance.seanceName}`:""}</div>}
           <Lbl>Exercices</Lbl>
+          {exos.length===0&&(
+            <div style={{padding:"12px",borderRadius:10,background:C.alt,marginBottom:8,textAlign:"center",color:C.muted,fontSize:13,fontWeight:300}}>
+              Aucun exercice — ajoutes-en ci-dessous
+            </div>
+          )}
           {exos.map((e,i)=>(
             <div key={i} style={{padding:"12px",borderRadius:12,background:C.alt,marginBottom:8}}>
               <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
@@ -721,7 +726,7 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
           <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={3} placeholder="Notes globales..." className="inp" style={{resize:"none",marginBottom:12}}/>
         </>
       )}
-      {seance.type!=="muscu"&&<div style={{marginBottom:20}}><Lbl>Notes libres</Lbl><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4} placeholder="Marques, sensations, intentions, gênes..." className="inp" style={{resize:"none",lineHeight:1.6}}/></div>}
+      {seance.type!=="muscu"&&!seance.cycleId&&<div style={{marginBottom:20}}><Lbl>Notes libres</Lbl><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={4} placeholder="Marques, sensations, intentions, gênes..." className="inp" style={{resize:"none",lineHeight:1.6}}/></div>}
       <button className="btn-primary" onClick={save}>Sauvegarder</button>
     </Modal>
   );
@@ -1805,4 +1810,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9b
+//v9c
