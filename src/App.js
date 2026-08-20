@@ -309,7 +309,7 @@ export default function App() {
     {key:"planning",icon:"ti-calendar-week",label:"Planning"},
     isCoach?{key:"athletes",icon:"ti-run",label:"Athlètes"}:{key:"profil",icon:"ti-user",label:"Profil"},
     {key:"comps",icon:"ti-trophy",label:"Compétitions"},
-    isCoach?{key:"cycles",icon:"ti-barbell",label:"Cycles"}:null,
+    {key:"cycles",icon:"ti-barbell",label:"Cycles"},
   ].filter(Boolean);
 
   function handleDuplicate(seance){
@@ -346,7 +346,7 @@ export default function App() {
         {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach}/>}
         {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach} onSelSeance={setSelSeance}/>}
         {view==="comps"&&<Comps comps={comps} athletesList={athletesList} isCoach={isCoach} user={user} onUpdateComp={updateComp} onDeleteComp={deleteComp} onAdd={()=>setShowAddComp(true)}/>}
-        {view==="cycles"&&isCoach&&<Cycles cyclesList={cyclesList} athletesList={athletesList} onAddCycle={addCycle} onDeleteCycle={deleteCycle} onUpdateCycle={updateCycle}/>}
+        {view==="cycles"&&<Cycles cyclesList={cyclesList} athletesList={athletesList} onAddCycle={addCycle} onDeleteCycle={deleteCycle} onUpdateCycle={updateCycle} isCoach={isCoach} user={user}/>
       </div>
 
       <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"space-around",padding:"8px 0 18px",zIndex:50}}>
@@ -650,18 +650,55 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
     if(cycleExos.length>0)return cycleExos.map(e=>({nom:e.nom,seriesPrev:e.series,repsPrev:e.reps,series:"",poids:"",rpe:""}));
     return[];
   });
+  // Modifications personnelles du contenu (sans toucher la séance commune)
+  const [myContenu,setMyContenu]=useState(existing?.myContenu||seance.contenu||"");
+  const [myDiscs,setMyDiscs]=useState(existing?.myDiscs||(seance.disciplines||[]));
+  const [editSeanceInfo,setEditSeanceInfo]=useState(false);
 
+  function toggleDisc(d){setMyDiscs(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d]);}
   function updExo(i,f,v){setExos(p=>p.map((e,j)=>j===i?{...e,[f]:v}:e));}
   function save(){
-    const data=seance.type==="muscu"?{type:"muscu",forme,difficulte,fatigue,notes,exos}:{type:seance.type,forme,difficulte,fatigue,notes};
+    const data=seance.type==="muscu"
+      ?{type:"muscu",forme,difficulte,fatigue,notes,exos,myContenu,myDiscs}
+      :{type:seance.type,forme,difficulte,fatigue,notes,myContenu,myDiscs};
     onSave(data);
   }
 
   return (
     <Modal onClose={onClose} title="Bilan de séance" full>
+      {/* Info séance */}
+      <div style={{padding:"10px 12px",borderRadius:10,background:C.alt,marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+          <div style={{fontSize:12,fontWeight:800,color:C.text}}>{seance.type==="muscu"?"◆ Muscu":seance.type==="autonomie"?"○ Autonomie":"⚡ Piste"} · {seance.heureDebut}–{seance.heureFin}</div>
+          <button onClick={()=>setEditSeanceInfo(!editSeanceInfo)} style={{background:"none",border:"none",fontSize:11,color:C.green,fontWeight:700,cursor:"pointer"}}>
+            {editSeanceInfo?"Fermer":"Modifier ma séance"}
+          </button>
+        </div>
+        {editSeanceInfo?(
+          <div>
+            <div style={{fontSize:11,color:C.muted,marginBottom:4}}>Ma description perso</div>
+            <textarea value={myContenu} onChange={e=>setMyContenu(e.target.value)} rows={2} className="inp" style={{resize:"none",marginBottom:8,fontSize:13,background:C.surface}}/>
+            {seance.type!=="muscu"&&(
+              <div>
+                <div style={{fontSize:11,color:C.muted,marginBottom:6}}>Mes disciplines</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                  {DISCIPLINES.map(d=><button key={d} onClick={()=>toggleDisc(d)} className={`disc ${myDiscs.includes(d)?"disc-on":"disc-off"}`} style={{fontSize:11}}>{d}</button>)}
+                </div>
+              </div>
+            )}
+          </div>
+        ):(
+          <>
+            {myContenu&&<div style={{fontSize:13,color:C.muted,fontWeight:300,lineHeight:1.5}}>{myContenu}</div>}
+            {myDiscs.length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>{myDiscs.map(d=><span key={d} style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:5,background:C.greenLight,color:C.green}}>{d}</span>)}</div>}
+          </>
+        )}
+      </div>
+
       <Slider label="Forme pendant la séance" value={forme} onChange={setForme} color={C.green}/>
       <Slider label="Difficulté de la séance" value={difficulte} onChange={setDifficulte} color={C.amber}/>
       <Slider label="Fatigue après la séance" value={fatigue} onChange={setFatigue} color={C.danger}/>
+
       {seance.type==="muscu"&&(
         <>
           {cycle&&<div style={{padding:"8px 12px",borderRadius:10,background:C.greenLight,marginBottom:14,fontSize:12,fontWeight:700,color:C.green}}>◆ {cycle.nom}{seance.seanceName?` · ${seance.seanceName}`:""}</div>}
@@ -842,9 +879,169 @@ function CycleCard({cycle}) {
   );
 }
 
+function StatsView({mySeances,logs,userId}) {
+  const [period,setPeriod]=useState("semaine"); // semaine | mois
+
+  // Calculer les stats par semaine
+  const weekStats=[];
+  const weekMap={};
+  mySeances.forEach(s=>{
+    const wo=s.weekOffset||0;
+    if(!weekMap[wo])weekMap[wo]={wo,seances:[],forms:[],fatigues:[],discs:{},types:{}};
+    weekMap[wo].seances.push(s);
+    const log=logs[`${userId}_${s.id}`];
+    if(log){
+      if(log.forme!=null)weekMap[wo].forms.push(log.forme);
+      if(log.fatigue!=null)weekMap[wo].fatigues.push(log.fatigue);
+    }
+    // Disciplines
+    const discs=log?.myDiscs||s.disciplines||[];
+    discs.forEach(d=>weekMap[wo].discs[d]=(weekMap[wo].discs[d]||0)+1);
+    // Types
+    const t=s.type||"piste";
+    weekMap[wo].types[t]=(weekMap[wo].types[t]||0)+1;
+  });
+
+  const weeks=Object.values(weekMap).sort((a,b)=>a.wo-b.wo);
+  const avgForme=w=>w.forms.length?Math.round(w.forms.reduce((a,b)=>a+b,0)/w.forms.length*10)/10:null;
+  const avgFatigue=w=>w.fatigues.length?Math.round(w.fatigues.reduce((a,b)=>a+b,0)/w.fatigues.length*10)/10:null;
+
+  // Semaine sélectionnée (dernière par défaut)
+  const [selWo,setSelWo]=useState(weeks.length?weeks[weeks.length-1].wo:0);
+  const selWeek=weekMap[selWo];
+
+  // Données graphique (8 dernières semaines)
+  const graphWeeks=weeks.slice(-8);
+  const graphW=320,graphH=120,padL=24,padR=8,padT=10,padB=24;
+  const innerW=graphW-padL-padR;
+  const innerH=graphH-padT-padB;
+  const n=graphWeeks.length;
+
+  function xPos(i){return padL+i*(innerW/(Math.max(n-1,1)));}
+  function yPos(v){return padT+innerH-(v/10)*innerH;}
+
+  function makePath(vals){
+    const pts=vals.map((v,i)=>v!=null?`${xPos(i)},${yPos(v)}`:null).filter(Boolean);
+    if(pts.length<2)return "";
+    return "M "+pts.join(" L ");
+  }
+
+  const formeVals=graphWeeks.map(w=>avgForme(w));
+  const fatigueVals=graphWeeks.map(w=>avgFatigue(w));
+
+  if(mySeances.length===0)return <p className="empty">Pas encore de données.</p>;
+
+  return (
+    <div>
+      {/* Nav semaines */}
+      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14,paddingBottom:4}}>
+        {weeks.map(w=>{
+          const ws=weekStart(w.wo);
+          const lbl=`S${Math.ceil((((ws-new Date(ws.getFullYear(),0,1))/86400000)+new Date(ws.getFullYear(),0,1).getDay()+1)/7)}`;
+          return(
+            <button key={w.wo} onClick={()=>setSelWo(w.wo)} style={{flexShrink:0,padding:"5px 12px",borderRadius:10,border:`1.5px solid ${selWo===w.wo?C.green:C.border}`,background:selWo===w.wo?C.greenLight:"transparent",color:selWo===w.wo?C.green:C.muted,fontSize:11,fontWeight:700,cursor:"pointer"}}>
+              {lbl}
+            </button>
+          );
+        })}
+      </div>
+
+      {selWeek&&(
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:12,fontWeight:700,color:C.green,marginBottom:10}}>{weekLabel(weekStart(selWo))}</div>
+
+          {/* Types de séances */}
+          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+            {Object.entries(selWeek.types).map(([t,n])=>(
+              <div key={t} style={{padding:"8px 14px",borderRadius:10,background:t==="muscu"?"#F0EDE8":t==="autonomie"?"#EAF0F5":C.greenLight,textAlign:"center"}}>
+                <div style={{fontSize:18}}>{t==="muscu"?"🏋️":t==="autonomie"?"🔓":"🏃"}</div>
+                <div style={{fontSize:13,fontWeight:800,color:C.text}}>{n}×</div>
+                <div style={{fontSize:10,color:C.muted,fontWeight:300,textTransform:"capitalize"}}>{t}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Disciplines */}
+          {Object.keys(selWeek.discs).length>0&&(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.muted,marginBottom:6,letterSpacing:.5,textTransform:"uppercase"}}>Disciplines</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {Object.entries(selWeek.discs).sort((a,b)=>b[1]-a[1]).map(([d,n])=>(
+                  <span key={d} style={{padding:"4px 10px",borderRadius:8,background:C.alt,fontSize:12,fontWeight:600,color:C.text}}>
+                    {d} <span style={{color:C.green,fontWeight:800}}>×{n}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Moyennes */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+            {avgForme(selWeek)!=null&&(
+              <div style={{padding:"10px 12px",borderRadius:10,background:C.greenLight}}>
+                <div style={{fontSize:10,color:C.green,fontWeight:700,marginBottom:4}}>FORME MOY.</div>
+                <div style={{fontSize:22,fontWeight:800,color:C.green}}>{avgForme(selWeek)}<span style={{fontSize:11,fontWeight:300}}>/10</span></div>
+                <div style={{height:4,borderRadius:2,background:"rgba(28,51,38,0.15)",marginTop:6}}>
+                  <div style={{height:"100%",borderRadius:2,background:C.green,width:`${avgForme(selWeek)*10}%`}}/>
+                </div>
+              </div>
+            )}
+            {avgFatigue(selWeek)!=null&&(
+              <div style={{padding:"10px 12px",borderRadius:10,background:C.dangerBg}}>
+                <div style={{fontSize:10,color:C.danger,fontWeight:700,marginBottom:4}}>FATIGUE MOY.</div>
+                <div style={{fontSize:22,fontWeight:800,color:C.danger}}>{avgFatigue(selWeek)}<span style={{fontSize:11,fontWeight:300}}>/10</span></div>
+                <div style={{height:4,borderRadius:2,background:"rgba(192,57,43,0.15)",marginTop:6}}>
+                  <div style={{height:"100%",borderRadius:2,background:C.danger,width:`${avgFatigue(selWeek)*10}%`}}/>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Graphique évolution */}
+      {graphWeeks.length>=2&&(
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:C.text,marginBottom:6}}>📈 Évolution forme / fatigue</div>
+          <div style={{background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,padding:"12px 8px 8px",overflowX:"auto"}}>
+            <svg width={graphW} height={graphH} style={{display:"block"}}>
+              {/* Grille */}
+              {[2,4,6,8,10].map(v=>(
+                <g key={v}>
+                  <line x1={padL} y1={yPos(v)} x2={graphW-padR} y2={yPos(v)} stroke={C.border} strokeWidth={0.5}/>
+                  <text x={padL-4} y={yPos(v)+4} fontSize={8} fill={C.light} textAnchor="end">{v}</text>
+                </g>
+              ))}
+              {/* Labels semaines */}
+              {graphWeeks.map((w,i)=>{
+                const ws=weekStart(w.wo);
+                const lbl=`S${Math.ceil((((ws-new Date(ws.getFullYear(),0,1))/86400000)+new Date(ws.getFullYear(),0,1).getDay()+1)/7)}`;
+                return <text key={i} x={xPos(i)} y={graphH-6} fontSize={8} fill={C.light} textAnchor="middle">{lbl}</text>;
+              })}
+              {/* Courbe fatigue */}
+              {makePath(fatigueVals)&&<path d={makePath(fatigueVals)} fill="none" stroke={C.danger} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4,2"/>}
+              {/* Courbe forme */}
+              {makePath(formeVals)&&<path d={makePath(formeVals)} fill="none" stroke={C.green} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>}
+              {/* Points forme */}
+              {formeVals.map((v,i)=>v!=null&&<circle key={i} cx={xPos(i)} cy={yPos(v)} r={3} fill={C.green}/>)}
+              {/* Points fatigue */}
+              {fatigueVals.map((v,i)=>v!=null&&<circle key={i} cx={xPos(i)} cy={yPos(v)} r={3} fill={C.danger}/>)}
+            </svg>
+            <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:4}}>
+              <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.green}}><div style={{width:16,height:2,background:C.green,borderRadius:1}}/>Forme</div>
+              <div style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:C.danger}}><div style={{width:16,height:2,background:C.danger,borderRadius:1,borderTop:"2px dashed "+C.danger}}/>Fatigue</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,isCoach,onSelSeance}) {
   const viewerId=user.id;
   const mySeances=seancesList.filter(s=>(s.presences||{})[user.id]==="present");
+  const [mainTab,setMainTab]=useState("historique"); // historique | stats
 
   // Cycles : actifs vs archivés
   const allMyCycles=cyclesList.filter(c=>{
@@ -959,10 +1156,22 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
       </div>
 
       {/* Historique */}
-      <div style={{fontSize:13,fontWeight:800,color:C.text,marginBottom:12}}>📅 Historique des séances</div>
-      <SeanceSearch mySeances={mySeances} logs={logs} userId={user.id} notifs={notifs} onShowLog={onShowLog}/>
-      {byWeekSorted.length===0&&<p className="empty">Aucune séance cochée.</p>}
-      {byWeekSorted.map(([wk,items])=>(
+      {/* Onglets Historique / Stats */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {[["historique","📅 Historique"],["stats","📊 Bilan & Évolution"]].map(([k,l])=>(
+          <button key={k} onClick={()=>setMainTab(k)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${mainTab===k?C.green:C.border}`,background:mainTab===k?C.greenLight:C.surface,color:mainTab===k?C.green:C.muted,fontWeight:mainTab===k?700:400,fontSize:13,cursor:"pointer"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {mainTab==="stats"&&<StatsView mySeances={mySeances} logs={logs} userId={user.id}/>}
+
+      {mainTab==="historique"&&(
+        <>
+          <SeanceSearch mySeances={mySeances} logs={logs} userId={user.id} notifs={notifs} onShowLog={onShowLog}/>
+          {byWeekSorted.length===0&&<p className="empty">Aucune séance cochée.</p>}
+          {byWeekSorted.map(([wk,items])=>(
         <div key={wk} style={{marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:700,color:C.green,letterSpacing:.5,marginBottom:6,padding:"4px 10px",background:C.greenLight,borderRadius:8,display:"inline-block"}}>{wk}</div>
           {items.sort((a,b)=>(a.s.jour||0)-(b.s.jour||0)).map(({s,log})=>{
@@ -981,6 +1190,8 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
           })}
         </div>
       ))}
+        </>
+      )}
     </div>
   );
 }
@@ -1156,12 +1367,20 @@ function CompInsc({existing,onSave}) {
   );
 }
 
-function Cycles({cyclesList,athletesList,onAddCycle,onDeleteCycle,onUpdateCycle}) {
+function Cycles({cyclesList,athletesList,onAddCycle,onDeleteCycle,onUpdateCycle,isCoach,user}) {
   const [showAdd,setShowAdd]=useState(false);
   const [search,setSearch]=useState("");
   const [sortBy,setSortBy]=useState("nom");
   const [selCycle,setSelCycle]=useState(null);
-  const filtered=cyclesList.filter(c=>!search||c.nom?.toLowerCase().includes(search.toLowerCase()))
+  // Athlètes voient leurs cycles assignés + ceux qu'ils ont créés
+  const visibleCycles=isCoach?cyclesList:cyclesList.filter(c=>{
+    const a=c.assignes;
+    if(c.createdBy===user?.id)return true;
+    if(!a)return false;
+    if(Array.isArray(a))return a.includes(user?.id);
+    return a[user?.id]!==undefined;
+  });
+  const filtered=visibleCycles.filter(c=>!search||c.nom?.toLowerCase().includes(search.toLowerCase()))
     .sort((a,b)=>sortBy==="nom"?(a.nom||"").localeCompare(b.nom||""):(b.assignes||[]).length-(a.assignes||[]).length);
   return (
     <div style={{padding:"16px 20px"}}>
@@ -1187,7 +1406,7 @@ function Cycles({cyclesList,athletesList,onAddCycle,onDeleteCycle,onUpdateCycle}
           </div>
         );
       })}
-      {showAdd&&<AddCycle athletesList={athletesList} onClose={()=>setShowAdd(false)} onAdd={data=>{onAddCycle(data);setShowAdd(false);}}/>}
+      {showAdd&&<AddCycle athletesList={isCoach?athletesList:[]} onClose={()=>setShowAdd(false)} onAdd={data=>{onAddCycle({...data,createdBy:user?.id});setShowAdd(false);}}/>}
       {selCycle&&<CycleDetail cycle={selCycle} athletesList={athletesList} onClose={()=>setSelCycle(null)} onUpdate={data=>{onUpdateCycle(selCycle.id,data);setSelCycle(null);}}/>}
     </div>
   );
@@ -1586,4 +1805,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v8c
+//v9
