@@ -265,6 +265,7 @@ export default function App() {
   const [filterMine,setFilterMine]=useState(false);
   const [filterAthlete,setFilterAthlete]=useState("all");
   const [showDuplicate,setShowDuplicate]=useState(null);
+  const [showNotifs,setShowNotifs]=useState(false);
 
   useEffect(()=>{
     fetch("https://api.open-meteo.com/v1/forecast?latitude=43.6109&longitude=3.8763&current=temperature_2m,weather_code&timezone=Europe/Paris")
@@ -1922,4 +1923,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9k
+//v9l
