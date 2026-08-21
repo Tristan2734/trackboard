@@ -367,7 +367,7 @@ export default function App() {
   }
 
   return (
-    <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",background:C.bg,paddingBottom:80}}>
+    <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",background:C.bg,paddingBottom:100}}>
       <div style={{background:darkMode?"#1A2020":"#6BA8A4",borderBottom:`1px solid ${darkMode?"#2A3530":"#5A9590"}`,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <div>
           <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",marginBottom:2}}>TrackBoard</div>
@@ -396,13 +396,15 @@ export default function App() {
         {view==="cycles"&&<Cycles cyclesList={cyclesList} athletesList={athletesList} onAddCycle={addCycle} onDeleteCycle={deleteCycle} onUpdateCycle={updateCycle} isCoach={isCoach} user={user}/>}
       </div>
 
-      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:darkMode?"#1A2020":"#6BA8A4",borderTop:`1px solid ${darkMode?"#2A3530":"#5A9590"}`,display:"flex",justifyContent:"space-around",padding:"8px 0 18px",zIndex:50}}>
-        {TABS.map(t=>(
-          <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)}>
-            <i className={`ti ${t.icon}`} style={{fontSize:24,color:"#fff",opacity:view===t.key?1:.5}} aria-hidden="true"/>
-            <span style={{fontSize:9,fontWeight:view===t.key?700:400,color:"#fff",opacity:view===t.key?1:.5}}>{t.label}</span>
-          </button>
-        ))}
+      <nav style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",zIndex:50}}>
+        <div style={{background:darkMode?"#1A2020":"#1C3326",borderRadius:40,padding:"12px 28px",display:"flex",gap:36,alignItems:"center",boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
+          {TABS.map(t=>(
+            <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:0,position:"relative"}}>
+              <i className={`ti ${t.icon}`} style={{fontSize:26,color:view===t.key?(darkMode?"#6BA8A4":"#9FD4A8"):"rgba(255,255,255,0.4)",transition:"color .2s"}} aria-hidden="true"/>
+              {view===t.key&&<div style={{position:"absolute",bottom:-5,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:darkMode?"#6BA8A4":"#9FD4A8"}}/>}
+            </button>
+          ))}
+        </div>
       </nav>
 
       {selSeance&&<SeanceModal seance={{...selSeance,presences:{...(selSeance.presences||{}),...(localPresences[selSeance.id]||{})}}} athletesList={athletesList} logs={logs} isCoach={isCoach} user={user} notifs={notifs} cyclesList={cyclesList} onClose={()=>setSelSeance(null)} onPresence={(sid,uid,st)=>{
@@ -544,7 +546,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
         const isToday=new Date().toDateString()===dayDate.toDateString();
         return (
           <div key={i}>
-            <div style={{padding:"10px 20px 4px",display:"flex",alignItems:"center",gap:8}}>
+            <div style={{padding:"14px 20px 5px",display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:11,fontWeight:700,color:isToday?C.green:"#8A8578",letterSpacing:.8,textTransform:"uppercase"}}>{JOURS[i]}</span>
               <span style={{fontSize:11,color:isToday?C.green:"#8A8578",fontWeight:isToday?700:400}}>{dateStr}</span>
               {isToday&&<span style={{fontSize:9,background:C.green,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700}}>Aujourd'hui</span>}
@@ -1923,4 +1925,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9m
+//v9n
