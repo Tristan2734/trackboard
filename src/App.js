@@ -296,8 +296,10 @@ export default function App() {
       if(s.jour!==i)return false;
       if(s.weekOffset!==weekOffset)return false;
       if(filterGroupe!=="all"){
-        if(s.groupe&&s.groupe!==filterGroupe)return false;
-        if(!s.groupe&&(s.athletes||[]).length>0)return false;
+        // Si la séance n'a pas de groupe → visible seulement dans "Tous"
+        if(!s.groupe||s.groupe==="")return false;
+        // Si la séance a un groupe → visible seulement si ça correspond
+        if(s.groupe!==filterGroupe)return false;
       }
       if(filterMine&&!(s.presences||{})[user.id])return false;
       if(filterAthlete!=="all"&&!(s.presences||{})[filterAthlete])return false;
@@ -1810,4 +1812,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9c
+//v9d
