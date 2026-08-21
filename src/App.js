@@ -374,9 +374,9 @@ export default function App() {
 
       <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#6BA8A4",borderTop:"1px solid #5A9590",display:"flex",justifyContent:"space-around",padding:"8px 0 18px",zIndex:50}}>
         {TABS.map(t=>(
-            <i className={`ti ${t.icon}`} style={{fontSize:24,color:"#fff"}} aria-hidden="true"/>
-            <span style={{fontSize:9,fontWeight:view===t.key?700:400,color:"#fff",opacity:view===t.key?1:.6}}>{t.label}</span>
-            <span style={{fontSize:9,fontWeight:view===t.key?700:400,color:view===t.key?C.green:C.muted}}>{t.label}</span>
+          <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)}>
+            <i className={`ti ${t.icon}`} style={{fontSize:24,color:"#fff",opacity:view===t.key?1:.5}} aria-hidden="true"/>
+            <span style={{fontSize:9,fontWeight:view===t.key?700:400,color:"#fff",opacity:view===t.key?1:.5}}>{t.label}</span>
           </button>
         ))}
       </nav>
@@ -1899,4 +1899,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9h
+//v9i
