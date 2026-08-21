@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getUsers, saveUser, getSeances, addSeance, updateSeance, deleteSeance, setPresence, getLogs, saveLog, getComps, addComp, updateComp, deleteComp, getCycles, addCycle, updateCycle, deleteCycle } from "./firebase";
 import { ref, set, onValue, push } from "firebase/database";
 import { db } from "./firebase";
@@ -53,10 +53,12 @@ const injectStyles = () => {
     .disc-on{background:${C.green};color:#fff}
     .disc-off{background:${C.alt};color:${C.muted}}
     .tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.3px}
-    .slide-up{animation:slideUp .25s cubic-bezier(.32,.72,0,1)}
-    .fade{animation:fade .2s ease}
-    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
-    @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+    .slide-up{animation:slideUp .28s cubic-bezier(.32,.72,0,1)}
+    .fade{animation:fade .22s ease}
+    .view-enter{animation:viewIn .2s cubic-bezier(.32,.72,0,1)}
+    @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+    @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes viewIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
     .lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${C.muted};margin-bottom:8px}
     .sep{height:1px;background:${C.border};margin:8px 0}
     .nav-btn{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 10px;transition:opacity .15s}
@@ -281,8 +283,17 @@ export default function App() {
   }));
   const cyclesList=Object.entries(cycles).map(([id,c])=>({...c,id}));
 
+  const now=new Date();
+  const isSeancePast=(s)=>{
+    const ws=weekStart(s.weekOffset||0);
+    const d=new Date(ws);d.setDate(ws.getDate()+(s.jour||0));
+    const [h,m]=(s.heureFin||"23:59").split(":").map(Number);
+    d.setHours(h,m,0,0);
+    return d<now;
+  };
   const notifs={};
   seancesList.forEach(s=>{
+    if(!isSeancePast(s))return;
     Object.entries(s.presences||{}).forEach(([uid,st])=>{
       const u=users[uid];
       if(st==="present"&&!logs[`${uid}_${s.id}`]&&u?.role!=="coach")notifs[`${uid}_${s.id}`]=true;
@@ -336,16 +347,16 @@ export default function App() {
 
   return (
     <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",background:C.bg,paddingBottom:80}}>
-      <div style={{background:"#DDD8CC",borderBottom:`1px solid #C8C3B5`,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
+      <div style={{background:"#6BA8A4",borderBottom:`1px solid #5A9590`,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <div>
-          <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:"#8A8578",textTransform:"uppercase",marginBottom:2}}>TrackBoard</div>
-          <div style={{fontSize:15,fontWeight:800,color:C.text,lineHeight:1.2}}>{new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>
+          <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",marginBottom:2}}>TrackBoard</div>
+          <div style={{fontSize:16,fontWeight:800,color:"#fff",lineHeight:1.2}}>{new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           {meteo&&(
-            <div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(255,255,255,0.5)",borderRadius:10,padding:"5px 10px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(255,255,255,0.2)",borderRadius:10,padding:"5px 10px"}}>
               <span style={{fontSize:16}}>{meteo.icon}</span>
-              <span style={{fontSize:13,fontWeight:700,color:C.text}}>{meteo.t}°</span>
+              <span style={{fontSize:13,fontWeight:700,color:"#fff"}}>{meteo.t}°</span>
             </div>
           )}
           {nbNotifs>0&&<div onClick={()=>setShowNotifs(true)} style={{background:C.danger,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:"pointer"}}>{nbNotifs}</div>}
@@ -353,7 +364,7 @@ export default function App() {
         </div>
       </div>
 
-      <div className="fade">
+      <div className="fade view-enter">
         {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} filterAthlete={filterAthlete} setFilterAthlete={setFilterAthlete} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)}/>}
         {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach}/>}
         {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach} onSelSeance={setSelSeance}/>}
@@ -361,10 +372,10 @@ export default function App() {
         {view==="cycles"&&<Cycles cyclesList={cyclesList} athletesList={athletesList} onAddCycle={addCycle} onDeleteCycle={deleteCycle} onUpdateCycle={updateCycle} isCoach={isCoach} user={user}/>}
       </div>
 
-      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"space-around",padding:"8px 0 18px",zIndex:50}}>
+      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#6BA8A4",borderTop:"1px solid #5A9590",display:"flex",justifyContent:"space-around",padding:"8px 0 18px",zIndex:50}}>
         {TABS.map(t=>(
-          <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{opacity:view===t.key?1:.35}}>
-            <i className={`ti ${t.icon}`} style={{fontSize:24,color:view===t.key?C.green:C.text}} aria-hidden="true"/>
+            <i className={`ti ${t.icon}`} style={{fontSize:24,color:"#fff"}} aria-hidden="true"/>
+            <span style={{fontSize:9,fontWeight:view===t.key?700:400,color:"#fff",opacity:view===t.key?1:.6}}>{t.label}</span>
             <span style={{fontSize:9,fontWeight:view===t.key?700:400,color:view===t.key?C.green:C.muted}}>{t.label}</span>
           </button>
         ))}
@@ -382,7 +393,7 @@ export default function App() {
       {showAddComp&&<AddComp onClose={()=>setShowAddComp(false)} onAdd={data=>{addComp(data);setShowAddComp(false);}}/>}
       {showProfile&&<ProfileModal user={user} onClose={()=>setShowProfile(false)} onSave={data=>{const u={...user,...data};saveUser(user.id,u);localStorage.setItem("tb_user",JSON.stringify(u));setUser(u);setShowProfile(false);}} onLogout={logout}/>}
       {showNotifs&&(
-        <Modal onClose={()=>setShowNotifs(false)} title="Bilans à remplir 📝">
+        <Modal onClose={()=>setShowNotifs(false)} title="Bilans à remplir">
           {isCoach?(
             // Vue coach : tous les bilans manquants groupés par athlète
             (() => {
@@ -456,8 +467,18 @@ export default function App() {
 }
 
 function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd}) {
+  const touchStartX=useRef(null);
+
+  function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;}
+  function handleTouchEnd(e){
+    if(touchStartX.current===null)return;
+    const dx=e.changedTouches[0].clientX-touchStartX.current;
+    if(Math.abs(dx)>60){dx<0?setWeekOffset(w=>w+1):setWeekOffset(w=>w-1);}
+    touchStartX.current=null;
+  }
+
   return (
-    <div>
+    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div style={{padding:"12px 20px 8px"}}>
         {/* Nav semaine */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
@@ -487,7 +508,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
         {/* Filtre par athlète */}
         <div style={{marginTop:8}}>
           <select value={filterAthlete} onChange={e=>{setFilterAthlete(e.target.value);if(e.target.value!=="all"){setFilterGroupe("all");setFilterMine(false);}}} className="inp" style={{fontSize:13,padding:"8px 12px",color:filterAthlete!=="all"?C.green:C.muted,fontWeight:filterAthlete!=="all"?700:400,borderColor:filterAthlete!=="all"?C.green:C.border}}>
-            <option value="all">👥 Voir un athlète en particulier...</option>
+            <option value="all">Athlète</option>
             {athletesList.sort((a,b)=>a.prenom.localeCompare(b.prenom)).map(a=><option key={a.id} value={a.id}>{a.prenom} {a.nom}{a.groupe?` · ${a.groupe}`:""}</option>)}
           </select>
         </div>
@@ -500,8 +521,8 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
         return (
           <div key={i}>
             <div style={{padding:"10px 20px 4px",display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:10,fontWeight:700,color:isToday?C.green:C.light,letterSpacing:1,textTransform:"uppercase"}}>{JOURS[i]}</span>
-              <span style={{fontSize:10,color:isToday?C.green:C.light,fontWeight:300}}>{dateStr}</span>
+              <span style={{fontSize:11,fontWeight:700,color:isToday?C.green:"#8A8578",letterSpacing:.8,textTransform:"uppercase"}}>{JOURS[i]}</span>
+              <span style={{fontSize:11,color:isToday?C.green:"#8A8578",fontWeight:isToday?700:400}}>{dateStr}</span>
               {isToday&&<span style={{fontSize:9,background:C.green,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700}}>Aujourd'hui</span>}
             </div>
             {seances.length===0&&<div style={{padding:"0 20px 6px",fontSize:12,color:C.light}}>—</div>}
@@ -538,9 +559,11 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                       ):s.cycleId?<div style={{fontSize:11,color:isCoachCard?"rgba(255,255,255,0.5)":C.muted,fontWeight:300}}>◆ {s.cycleName||"Muscu"}{s.seanceName?` · ${s.seanceName}`:""}</div>:null}
                     </div>
                     <div style={{flexShrink:0,textAlign:"right"}}>
-                      <div style={{fontSize:14,fontWeight:800,color:isCoachCard?"#fff":nbP>0?C.green:C.light}}>🧍{nbP}</div>
-                      <div style={{fontSize:9,color:isCoachCard?"rgba(255,255,255,0.4)":C.light}}>présent{nbP>1?"s":""}</div>
-                      {s.createdBy&&(()=>{const creator=athletesList.find(a=>a.id===s.createdBy);return creator?<div style={{fontSize:9,color:isCoachCard?"rgba(255,255,255,0.5)":C.light,fontWeight:300,marginTop:2}}>{creator.prenom}</div>:null;})()}
+                      <div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"flex-end"}}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isCoachCard?"#fff":nbP>0?C.green:C.light} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
+                        <div style={{fontSize:15,fontWeight:800,color:isCoachCard?"#fff":nbP>0?C.green:C.light}}>{nbP}</div>
+                      </div>
+                      {s.createdBy&&(()=>{const creator=athletesList.find(a=>a.id===s.createdBy);return creator?<div style={{fontSize:9,color:isCoachCard?"rgba(255,255,255,0.7)":"#8A8578",fontWeight:600,marginTop:2,textAlign:"right"}}>{creator.prenom}</div>:null;})()}
                     </div>
                   </div>
                 </div>
@@ -668,7 +691,7 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
         <button onClick={()=>onPresence(seance.id,user.id,myStatus==="present"?null:"present")} style={{flex:1,padding:"12px",borderRadius:12,border:`1.5px solid ${myStatus==="present"?C.green:C.border}`,background:myStatus==="present"?C.greenLight:C.surface,color:myStatus==="present"?C.green:C.muted,fontWeight:700,cursor:"pointer",fontSize:14}}>✓ Je viens</button>
         <button onClick={()=>onPresence(seance.id,user.id,myStatus==="absent"?null:"absent")} style={{flex:1,padding:"12px",borderRadius:12,border:`1.5px solid ${myStatus==="absent"?C.danger:C.border}`,background:myStatus==="absent"?C.dangerBg:C.surface,color:myStatus==="absent"?C.danger:C.muted,fontWeight:700,cursor:"pointer",fontSize:14}}>✗ Absent</button>
       </div>
-      {myStatus==="present"&&<button onClick={()=>onShowLog({seance,athleteId:user.id})} style={{width:"100%",padding:"12px",borderRadius:12,border:`1.5px solid ${notifs[`${user.id}_${seance.id}`]?C.danger:C.green}`,background:notifs[`${user.id}_${seance.id}`]?C.dangerBg:C.greenLight,color:notifs[`${user.id}_${seance.id}`]?C.danger:C.green,fontWeight:700,cursor:"pointer",fontSize:14,marginBottom:14}}>{logs[`${user.id}_${seance.id}`]?"✏️ Modifier mon bilan":"📝 Remplir mon bilan"}</button>}
+      {myStatus==="present"&&<button onClick={()=>onShowLog({seance,athleteId:user.id})} style={{width:"100%",padding:"12px",borderRadius:12,border:`1.5px solid ${notifs[`${user.id}_${seance.id}`]?C.danger:C.green}`,background:notifs[`${user.id}_${seance.id}`]?C.dangerBg:C.greenLight,color:notifs[`${user.id}_${seance.id}`]?C.danger:C.green,fontWeight:700,cursor:"pointer",fontSize:14,marginBottom:14}}>{logs[`${user.id}_${seance.id}`]?"Modifier mon bilan":"Remplir mon bilan"}</button>}
 
       {/* Présents */}
       <Lbl>Présents ({presents.length})</Lbl>
@@ -833,7 +856,7 @@ function NotesSection({userId,viewerId,isCoach}) {
   return (
     <div style={{marginBottom:24}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-        <div style={{fontSize:13,fontWeight:800,color:C.text}}>📝 Notes & Carnet</div>
+        <div style={{fontSize:13,fontWeight:800,color:C.text}}>Notes & Carnet</div>
         <button onClick={()=>setShowAdd(true)} style={{background:C.green,color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>+ Note</button>
       </div>
       <input className="inp" placeholder="Rechercher dans les notes..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:10,fontSize:13,padding:"10px 12px"}}/>
@@ -1025,7 +1048,7 @@ function StatsView({mySeances,logs,userId}) {
           <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
             {Object.entries(selWeek.types).map(([t,n])=>(
               <div key={t} style={{padding:"8px 14px",borderRadius:10,background:t==="muscu"?"#F0EDE8":t==="autonomie"?"#EAF0F5":C.greenLight,textAlign:"center"}}>
-                <div style={{fontSize:18}}>{t==="muscu"?"🏋️":t==="autonomie"?"🔓":"🏃"}</div>
+                <div style={{fontSize:18}}>{t==="muscu"?"◆":t==="autonomie"?"○":"⚡"}</div>
                 <div style={{fontSize:13,fontWeight:800,color:C.text}}>{n}×</div>
                 <div style={{fontSize:10,color:C.muted,fontWeight:300,textTransform:"capitalize"}}>{t}</div>
               </div>
@@ -1192,7 +1215,7 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
       {allMyCycles.length>0&&(
         <div style={{marginBottom:24}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontSize:13,fontWeight:800,color:C.text}}>🏋️ Muscu</div>
+            <div style={{fontSize:13,fontWeight:800,color:C.text}}>Muscu</div>
             <div style={{display:"flex",gap:6}}>
               {["actif","historique"].map(t=>(
                 <button key={t} onClick={()=>setMuscuTab(t)} style={{padding:"4px 12px",borderRadius:8,border:`1.5px solid ${muscuTab===t?C.green:C.border}`,background:muscuTab===t?C.greenLight:"transparent",color:muscuTab===t?C.green:C.muted,fontSize:11,fontWeight:700,cursor:"pointer",textTransform:"capitalize"}}>
@@ -1229,7 +1252,7 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
       {/* Historique */}
       {/* Onglets Historique / Stats */}
       <div style={{display:"flex",gap:8,marginBottom:16}}>
-        {[["historique","📅 Historique"],["stats","📊 Bilan & Évolution"]].map(([k,l])=>(
+        {[["historique","Historique"],["stats","Bilan & Évolution"]].map(([k,l])=>(
           <button key={k} onClick={()=>setMainTab(k)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${mainTab===k?C.green:C.border}`,background:mainTab===k?C.greenLight:C.surface,color:mainTab===k?C.green:C.muted,fontWeight:mainTab===k?700:400,fontSize:13,cursor:"pointer"}}>
             {l}
           </button>
@@ -1343,7 +1366,7 @@ function Comps({comps,athletesList,isCoach,user,onUpdateComp,onDeleteComp,onAdd}
               <div style={{fontSize:17,fontWeight:800,flex:1,marginRight:8}}>{c.nom}</div>
               <span className="tag" style={{background:C.greenLight,color:C.green,padding:"4px 10px",flexShrink:0}}>{c.niveau}</span>
             </div>
-            <div style={{fontSize:13,color:C.muted,fontWeight:300,marginBottom:14}}>📅 {c.date} · 📍 {c.lieu}</div>
+            <div style={{fontSize:13,color:C.muted,fontWeight:300,marginBottom:14}}>{c.date} · {c.lieu}</div>
 
             {/* Info coach */}
             {c.info&&<div style={{padding:"10px 12px",borderRadius:10,background:C.alt,marginBottom:12,fontSize:13,color:C.text,lineHeight:1.6,fontWeight:300}}>{c.info}</div>}
@@ -1876,4 +1899,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9f
+//v9h
