@@ -368,7 +368,7 @@ export default function App() {
 
   return (
     <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",background:C.bg,paddingBottom:80}}>
-      <div style={{background:"#6BA8A4",borderBottom:`1px solid #5A9590`,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
+      <div style={{background:darkMode?"#1A2020":"#6BA8A4",borderBottom:`1px solid ${darkMode?"#2A3530":"#5A9590"}`,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50}}>
         <div>
           <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",marginBottom:2}}>TrackBoard</div>
           <div style={{fontSize:16,fontWeight:800,color:"#fff",lineHeight:1.2}}>{new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"})}</div>
@@ -396,7 +396,7 @@ export default function App() {
         {view==="cycles"&&<Cycles cyclesList={cyclesList} athletesList={athletesList} onAddCycle={addCycle} onDeleteCycle={deleteCycle} onUpdateCycle={updateCycle} isCoach={isCoach} user={user}/>}
       </div>
 
-      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#6BA8A4",borderTop:"1px solid #5A9590",display:"flex",justifyContent:"space-around",padding:"8px 0 18px",zIndex:50}}>
+      <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:darkMode?"#1A2020":"#6BA8A4",borderTop:`1px solid ${darkMode?"#2A3530":"#5A9590"}`,display:"flex",justifyContent:"space-around",padding:"8px 0 18px",zIndex:50}}>
         {TABS.map(t=>(
           <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)}>
             <i className={`ti ${t.icon}`} style={{fontSize:24,color:"#fff",opacity:view===t.key?1:.5}} aria-hidden="true"/>
@@ -1923,4 +1923,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9l
+//v9m
