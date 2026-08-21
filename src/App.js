@@ -383,7 +383,7 @@ export default function App() {
           <button onClick={()=>setDarkMode(d=>!d)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <i className={`ti ${darkMode?"ti-sun":"ti-moon"}`} style={{fontSize:18,color:"#fff"}} aria-hidden="true"/>
           </button>
-          {nbNotifs>0&&<div onClick={()=>setShowNotifs(true)} style={{background:C.danger,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:"pointer"}}>{nbNotifs}</div>}
+          {nbNotifs>0&&<div onClick={()=>setShowNotifs(true)} style={{background:"#C0392B",color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>{nbNotifs}</div>}
           <div onClick={()=>setShowProfile(true)} style={{cursor:"pointer"}}><Avatar nom={user.nom} prenom={user.prenom} photo={user.photo} size={36}/></div>
         </div>
       </div>
@@ -397,7 +397,7 @@ export default function App() {
       </div>
 
       <nav style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",zIndex:50}}>
-        <div style={{background:darkMode?"#1A2020":"#1C3326",borderRadius:40,padding:"12px 28px",display:"flex",gap:36,alignItems:"center",boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
+        <div style={{background:darkMode?"#1A2020":"#6BA8A4",borderRadius:40,padding:"12px 28px",display:"flex",gap:36,alignItems:"center",boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
           {TABS.map(t=>(
             <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:0,position:"relative"}}>
               <i className={`ti ${t.icon}`} style={{fontSize:26,color:view===t.key?(darkMode?"#6BA8A4":"#9FD4A8"):"rgba(255,255,255,0.4)",transition:"color .2s"}} aria-hidden="true"/>
@@ -1925,4 +1925,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9n
+//v9o
