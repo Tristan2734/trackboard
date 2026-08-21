@@ -288,7 +288,17 @@ export default function App() {
       if(st==="present"&&!logs[`${uid}_${s.id}`]&&u?.role!=="coach")notifs[`${uid}_${s.id}`]=true;
     });
   });
-  const nbNotifs=isCoach?Object.keys(notifs).length:Object.keys(notifs).filter(k=>k.startsWith(user.id)).length;
+  const nbNotifs=isCoach
+    ?Object.keys(notifs).length
+    :seancesList.filter(s=>{
+        if((s.presences||{})[user.id]!=="present")return false;
+        if(!notifs[`${user.id}_${s.id}`])return false;
+        const ws=weekStart(s.weekOffset||0);
+        const d=new Date(ws);d.setDate(ws.getDate()+(s.jour||0));
+        const [h,m]=(s.heureFin||"23:59").split(":").map(Number);
+        d.setHours(h,m,0,0);
+        return d<new Date();
+      }).length;
 
   const ws=weekStart(weekOffset);
   const seancesByJour=Array.from({length:7},(_,i)=>
@@ -338,7 +348,7 @@ export default function App() {
               <span style={{fontSize:13,fontWeight:700,color:C.text}}>{meteo.t}°</span>
             </div>
           )}
-          {nbNotifs>0&&<div onClick={()=>!isCoach&&setShowNotifs(true)} style={{background:C.danger,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:isCoach?"default":"pointer"}}>{nbNotifs}</div>}
+          {nbNotifs>0&&<div onClick={()=>setShowNotifs(true)} style={{background:C.danger,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:"pointer"}}>{nbNotifs}</div>}
           <div onClick={()=>setShowProfile(true)} style={{cursor:"pointer"}}><Avatar nom={user.nom} prenom={user.prenom} photo={user.photo} size={36}/></div>
         </div>
       </div>
@@ -371,21 +381,74 @@ export default function App() {
       {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach} onSelSeance={s=>{setSelAthlete(null);setSelSeance(s);}}/></Modal>}
       {showAddComp&&<AddComp onClose={()=>setShowAddComp(false)} onAdd={data=>{addComp(data);setShowAddComp(false);}}/>}
       {showProfile&&<ProfileModal user={user} onClose={()=>setShowProfile(false)} onSave={data=>{const u={...user,...data};saveUser(user.id,u);localStorage.setItem("tb_user",JSON.stringify(u));setUser(u);setShowProfile(false);}} onLogout={logout}/>}
-      {showNotifs&&!isCoach&&(
+      {showNotifs&&(
         <Modal onClose={()=>setShowNotifs(false)} title="Bilans à remplir 📝">
-          {seancesList.filter(s=>(s.presences||{})[user.id]==="present"&&notifs[`${user.id}_${s.id}`]).length===0
-            ?<p className="empty">Tous tes bilans sont à jour ✓</p>
-            :seancesList.filter(s=>(s.presences||{})[user.id]==="present"&&notifs[`${user.id}_${s.id}`]).map(s=>(
-              <div key={s.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:`1px solid ${C.border}`}}>
-                <SeanceIcon type={s.type} size={36}/>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:14,fontWeight:700}}>{JOURS[s.jour]} · {s.heureDebut}–{s.heureFin}</div>
-                  <div style={{fontSize:12,color:C.danger,fontWeight:500}}>Bilan non rempli</div>
-                  {s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginTop:2}}>{s.contenu}</div>}
+          {isCoach?(
+            // Vue coach : tous les bilans manquants groupés par athlète
+            (() => {
+              const missing={};
+              seancesList.forEach(s=>{
+                Object.entries(s.presences||{}).forEach(([uid,st])=>{
+                  if(st==="present"&&notifs[`${uid}_${s.id}`]){
+                    if(!missing[uid])missing[uid]=[];
+                    missing[uid].push(s);
+                  }
+                });
+              });
+              const entries=Object.entries(missing);
+              if(entries.length===0)return <p className="empty">Tous les bilans sont à jour ✓</p>;
+              return entries.map(([uid,seances])=>{
+                const a=Object.values(users).find(u=>u.id===uid);
+                if(!a)return null;
+                return(
+                  <div key={uid} style={{marginBottom:16}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                      <Avatar nom={a.nom} prenom={a.prenom} photo={a.photo} size={28}/>
+                      <div style={{fontSize:14,fontWeight:700}}>{a.prenom} {a.nom}</div>
+                      <span style={{fontSize:11,background:C.dangerBg,color:C.danger,padding:"2px 8px",borderRadius:6,fontWeight:700}}>{seances.length} bilan{seances.length>1?"s":""}</span>
+                    </div>
+                    {seances.map(s=>(
+                      <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:10,background:C.dangerBg,border:`1px solid ${C.dangerBorder}`,marginBottom:6,marginLeft:36}}>
+                        <SeanceIcon type={s.type} size={28}/>
+                        <div>
+                          <div style={{fontSize:13,fontWeight:600}}>{JOURS[s.jour]} · {s.heureDebut}</div>
+                          {s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300}}>{s.contenu}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              });
+            })()
+          ):(
+            // Vue athlète : ses propres bilans manquants sur séances PASSÉES
+            (() => {
+              const now=new Date();
+              const missing=seancesList.filter(s=>{
+                if((s.presences||{})[user.id]!=="present")return false;
+                if(!notifs[`${user.id}_${s.id}`])return false;
+                // Vérifier que la séance est passée
+                const ws=weekStart(s.weekOffset||0);
+                const seanceDate=new Date(ws);
+                seanceDate.setDate(ws.getDate()+(s.jour||0));
+                const [h,m]=(s.heureFin||"23:59").split(":").map(Number);
+                seanceDate.setHours(h,m,0,0);
+                return seanceDate<now;
+              });
+              if(missing.length===0)return <p className="empty">Tous tes bilans sont à jour ✓</p>;
+              return missing.map(s=>(
+                <div key={s.id} onClick={()=>{setShowNotifs(false);setShowLog({seance:s,athleteId:user.id});}} style={{display:"flex",alignItems:"center",gap:12,padding:"12px",borderRadius:12,background:C.dangerBg,border:`1px solid ${C.dangerBorder}`,marginBottom:8,cursor:"pointer"}}>
+                  <SeanceIcon type={s.type} size={36}/>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700}}>{JOURS[s.jour]} · {s.heureDebut}–{s.heureFin}</div>
+                    <div style={{fontSize:12,color:C.danger,fontWeight:600}}>Bilan à remplir</div>
+                    {s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginTop:2}}>{s.contenu}</div>}
+                  </div>
+                  <i className="ti ti-pencil" style={{fontSize:18,color:C.danger}} aria-hidden="true"/>
                 </div>
-              </div>
-            ))
-          }
+              ));
+            })()
+          )}
         </Modal>
       )}
     </div>
@@ -475,8 +538,9 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                       ):s.cycleId?<div style={{fontSize:11,color:isCoachCard?"rgba(255,255,255,0.5)":C.muted,fontWeight:300}}>◆ {s.cycleName||"Muscu"}{s.seanceName?` · ${s.seanceName}`:""}</div>:null}
                     </div>
                     <div style={{flexShrink:0,textAlign:"right"}}>
-                      <div style={{fontSize:14,fontWeight:800,color:isCoachCard?"#fff":nbP>0?C.green:C.light}}>{nbP}</div>
+                      <div style={{fontSize:14,fontWeight:800,color:isCoachCard?"#fff":nbP>0?C.green:C.light}}>🧍{nbP}</div>
                       <div style={{fontSize:9,color:isCoachCard?"rgba(255,255,255,0.4)":C.light}}>présent{nbP>1?"s":""}</div>
+                      {s.createdBy&&(()=>{const creator=athletesList.find(a=>a.id===s.createdBy);return creator?<div style={{fontSize:9,color:isCoachCard?"rgba(255,255,255,0.5)":C.light,fontWeight:300,marginTop:2}}>{creator.prenom}</div>:null;})()}
                     </div>
                   </div>
                 </div>
@@ -1812,4 +1876,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9d
+//v9f
