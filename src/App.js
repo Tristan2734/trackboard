@@ -20,38 +20,48 @@ const PALETTE = [
   {hex:"#3A5A8A",rgba:"rgba(58,90,138,0.12)"},
 ];
 
-const C = {
+const LIGHT = {
   bg:"#F4F2EC",surface:"#FFFFFF",alt:"#EDEAE3",
   green:"#1C3326",greenMid:"#2D4A35",greenLight:"#E8F0E8",greenAccent:"#9FD4A8",
   text:"#1A1A1A",muted:"#888880",light:"#BEBAB0",border:"#E5E2DA",
   danger:"#C0392B",dangerBg:"#FCEBEB",dangerBorder:"#F7C1C1",
   amber:"#854F0B",amberBg:"#FFF4E0",
 };
+const DARK = {
+  bg:"#0F1412",surface:"#1A2020",alt:"#242C2A",
+  green:"#4CAF82",greenMid:"#3D8F68",greenLight:"#1A2E24",greenAccent:"#4CAF82",
+  text:"#ECEAE4",muted:"#7A8480",light:"#4A5450",border:"#2A3530",
+  danger:"#E05555",dangerBg:"#2A1A1A",dangerBorder:"#5A2A2A",
+  amber:"#D4A017",amberBg:"#2A2010",
+};
+let C = {...LIGHT};
 
-const injectStyles = () => {
-  if (document.getElementById("tb-styles")) return;
+const injectStyles = (dark=false) => {
+  const theme=dark?DARK:LIGHT;
+  const existing=document.getElementById("tb-styles");
+  if(existing)existing.remove();
   const s = document.createElement("style");
   s.id = "tb-styles";
   s.textContent = `
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800;900&display=swap');
     @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css');
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:'Plus Jakarta Sans',sans-serif}
-    body{background:${C.bg};font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased}
+    body{background:${theme.bg};font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased;transition:background .3s}
     input,textarea,select,button{font-family:'Plus Jakarta Sans',sans-serif!important}
     ::-webkit-scrollbar{display:none}
-    .inp{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid ${C.border};background:${C.surface};font-size:15px;color:${C.text};outline:none;transition:border-color .2s}
-    .inp:focus{border-color:${C.green}}
-    .btn-primary{width:100%;padding:15px;border-radius:14px;background:${C.green};color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s}
+    .inp{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid ${theme.border};background:${theme.surface};font-size:15px;color:${theme.text};outline:none;transition:border-color .2s}
+    .inp:focus{border-color:${theme.green}}
+    .btn-primary{width:100%;padding:15px;border-radius:14px;background:${theme.green};color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s}
     .btn-primary:active{opacity:.85}
-    .btn-ghost{padding:10px 16px;border-radius:10px;border:1.5px solid ${C.border};background:transparent;color:${C.muted};font-size:13px;font-weight:600;cursor:pointer}
-    .btn-danger{width:100%;padding:13px;border-radius:12px;border:1.5px solid ${C.danger};background:${C.dangerBg};color:${C.danger};font-weight:700;cursor:pointer;font-size:14px}
-    .card{background:${C.surface};border-radius:16px;border:1px solid ${C.border};padding:14px 16px}
+    .btn-ghost{padding:10px 16px;border-radius:10px;border:1.5px solid ${theme.border};background:transparent;color:${theme.muted};font-size:13px;font-weight:600;cursor:pointer}
+    .btn-danger{width:100%;padding:13px;border-radius:12px;border:1.5px solid ${theme.danger};background:${theme.dangerBg};color:${theme.danger};font-weight:700;cursor:pointer;font-size:14px}
+    .card{background:${theme.surface};border-radius:16px;border:1px solid ${theme.border};padding:14px 16px}
     .chip{display:inline-flex;align-items:center;padding:6px 13px;border-radius:20px;font-size:12px;font-weight:700;border:1.5px solid transparent;cursor:pointer;transition:all .15s;white-space:nowrap}
-    .chip-on{background:${C.green};color:#fff;border-color:${C.green}}
-    .chip-off{background:transparent;color:${C.muted};border-color:${C.border}}
+    .chip-on{background:${theme.green};color:#fff;border-color:${theme.green}}
+    .chip-off{background:transparent;color:${theme.muted};border-color:${theme.border}}
     .disc{padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:none;transition:all .15s}
-    .disc-on{background:${C.green};color:#fff}
-    .disc-off{background:${C.alt};color:${C.muted}}
+    .disc-on{background:${theme.green};color:#fff}
+    .disc-off{background:${theme.alt};color:${theme.muted}}
     .tag{font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.3px}
     .slide-up{animation:slideUp .28s cubic-bezier(.32,.72,0,1)}
     .fade{animation:fade .22s ease}
@@ -59,15 +69,15 @@ const injectStyles = () => {
     @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
     @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
     @keyframes viewIn{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:translateX(0)}}
-    .lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${C.muted};margin-bottom:8px}
-    .sep{height:1px;background:${C.border};margin:8px 0}
+    .lbl{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${theme.muted};margin-bottom:8px}
+    .sep{height:1px;background:${theme.border};margin:8px 0}
     .nav-btn{background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 10px;transition:opacity .15s}
-    .empty{font-size:13px;color:${C.light};text-align:center;padding:24px 0}
+    .empty{font-size:13px;color:${theme.light};text-align:center;padding:24px 0}
     .toggle-wrap{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;border-radius:12px;cursor:pointer;transition:all .2s}
     .toggle-track{width:44px;height:24px;border-radius:12px;position:relative;transition:background .2s;flex-shrink:0}
     .toggle-thumb{position:absolute;top:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s}
-    .note-card{background:${C.surface};border-radius:14px;border:1px solid ${C.border};padding:14px;cursor:pointer;margin-bottom:8px;transition:border-color .15s}
-    .note-card:hover{border-color:${C.green}}
+    .note-card{background:${theme.surface};border-radius:14px;border:1px solid ${theme.border};padding:14px;cursor:pointer;margin-bottom:8px;transition:border-color .15s}
+    .note-card:hover{border-color:${theme.green}}
   `;
   document.head.appendChild(s);
 };
@@ -239,7 +249,7 @@ function Login({onLogin}) {
 }
 
 export default function App() {
-  useEffect(()=>injectStyles(),[]);
+  const [darkMode,setDarkMode]=useState(()=>localStorage.getItem("tb_dark")==="1");
   const [user,setUser]=useState(null); const [isCoach,setIsCoach]=useState(false);
   const [view,setView]=useState("planning");
   const [users,setUsers]=useState({}); const [seances,setSeances]=useState({});
@@ -275,7 +285,13 @@ export default function App() {
 
   const handleLogin=(u,coach)=>{setUser(u);setIsCoach(coach);};
   const logout=()=>{localStorage.removeItem("tb_user");setUser(null);setIsCoach(false);};
-  const [showNotifs,setShowNotifs]=useState(false);
+  C=darkMode?DARK:LIGHT;
+
+  useEffect(()=>{
+    injectStyles(darkMode);
+    document.body.style.background=darkMode?DARK.bg:LIGHT.bg;
+    localStorage.setItem("tb_dark",darkMode?"1":"0");
+  },[darkMode]);
 
   if(!user) return <Login onLogin={handleLogin}/>;
 
@@ -363,6 +379,9 @@ export default function App() {
               <span style={{fontSize:13,fontWeight:700,color:"#fff"}}>{meteo.t}°</span>
             </div>
           )}
+          <button onClick={()=>setDarkMode(d=>!d)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+            <i className={`ti ${darkMode?"ti-sun":"ti-moon"}`} style={{fontSize:18,color:"#fff"}} aria-hidden="true"/>
+          </button>
           {nbNotifs>0&&<div onClick={()=>setShowNotifs(true)} style={{background:C.danger,color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:"pointer"}}>{nbNotifs}</div>}
           <div onClick={()=>setShowProfile(true)} style={{cursor:"pointer"}}><Avatar nom={user.nom} prenom={user.prenom} photo={user.photo} size={36}/></div>
         </div>
@@ -1903,4 +1922,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9j
+//v9k
