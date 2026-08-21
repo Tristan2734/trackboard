@@ -35,9 +35,9 @@ const injectStyles = () => {
   s.textContent = `
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;300;400;500;600;700;800;900&display=swap');
     @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css');
-    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:'Plus Jakarta Sans',sans-serif}
     body{background:${C.bg};font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased}
-    input,textarea,select,button{font-family:'Plus Jakarta Sans',sans-serif}
+    input,textarea,select,button{font-family:'Plus Jakarta Sans',sans-serif!important}
     ::-webkit-scrollbar{display:none}
     .inp{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid ${C.border};background:${C.surface};font-size:15px;color:${C.text};outline:none;transition:border-color .2s}
     .inp:focus{border-color:${C.green}}
@@ -146,9 +146,13 @@ function PaletteRow({selected, onChange}) {
 }
 
 function Modal({children,onClose,title,full,noBackdropClose}) {
+  useEffect(()=>{
+    document.body.style.overflow="hidden";
+    return()=>{document.body.style.overflow="";};
+  },[]);
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget&&!noBackdropClose)onClose();}}>
-      <div className="slide-up" style={{width:"100%",maxWidth:480,maxHeight:full?"100vh":"92vh",overflowY:"auto",background:C.bg,borderRadius:full?"0":"20px 20px 0 0",padding:"0 0 48px"}}>
+      <div className="slide-up" style={{width:"100%",maxWidth:480,maxHeight:full?"100vh":"92vh",overflowY:"auto",background:C.bg,borderRadius:full?"0":"20px 20px 0 0",padding:"0 0 48px",WebkitOverflowScrolling:"touch"}}>
         <div style={{padding:"20px 20px 0",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <div style={{fontSize:20,fontWeight:800,color:C.text}}>{title}</div>
           <button onClick={onClose} style={{background:C.alt,border:"none",borderRadius:"50%",width:32,height:32,cursor:"pointer",fontSize:18,color:C.muted,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>
@@ -1273,12 +1277,12 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
             return (
               <div key={s.id} onClick={()=>onSelSeance?onSelSeance(s):onShowLog({seance:s,athleteId:user.id})} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:14,background:need?C.dangerBg:C.surface,border:`1px solid ${need?C.dangerBorder:C.border}`,marginBottom:6,cursor:"pointer"}}>
                 <SeanceIcon type={s.type} size={34}/>
-                <div style={{flex:1}}>
+                <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700}}>{JOURS[s.jour]} · {s.heureDebut}</div>
-                  {s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.contenu}</div>}
+                  {s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{s.contenu}</div>}
                   {log?<div style={{fontSize:12,color:C.green,fontWeight:500}}>✓ Bilan rempli · Forme {log.forme}/10</div>:<div style={{fontSize:12,color:need?C.danger:C.light,fontWeight:need?600:300}}>{need?"Bilan à remplir":"—"}</div>}
                 </div>
-                <i className="ti ti-chevron-right" style={{fontSize:16,color:C.light}} aria-hidden="true"/>
+                <i className="ti ti-chevron-right" style={{fontSize:16,color:C.light,flexShrink:0}} aria-hidden="true"/>
               </div>
             );
           })}
@@ -1899,4 +1903,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9i
+//v9j
