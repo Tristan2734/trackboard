@@ -397,11 +397,34 @@ export default function App() {
       </div>
 
       <nav style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",zIndex:50}}>
-        <div style={{background:darkMode?"#1A2020":"#6BA8A4",borderRadius:40,padding:"12px 28px",display:"flex",gap:36,alignItems:"center",boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
-          {TABS.map(t=>(
-            <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:0,position:"relative"}}>
-              <i className={`ti ${t.icon}`} style={{fontSize:26,color:view===t.key?(darkMode?"#6BA8A4":"#9FD4A8"):"rgba(255,255,255,0.4)",transition:"color .2s"}} aria-hidden="true"/>
-              {view===t.key&&<div style={{position:"absolute",bottom:-5,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:darkMode?"#6BA8A4":"#9FD4A8"}}/>}
+        <div style={{
+          background:darkMode?"rgba(20,28,26,0.75)":"#6BA8A4",
+          backdropFilter:darkMode?"blur(16px)":"none",
+          WebkitBackdropFilter:darkMode?"blur(16px)":"none",
+          borderRadius:50,
+          padding:"10px 20px",
+          display:"flex",
+          gap:8,
+          alignItems:"center",
+          boxShadow:darkMode?"0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)":"0 8px 32px rgba(107,168,164,0.5)",
+          border:darkMode?"1px solid rgba(255,255,255,0.08)":"none",
+        }}>
+          {/* 2 premiers onglets */}
+          {TABS.slice(0,2).map(t=>(
+            <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:"6px 14px",position:"relative"}}>
+              <i className={`ti ${t.icon}`} style={{fontSize:24,color:view===t.key?(darkMode?"#6BA8A4":"#fff"):"rgba(255,255,255,0.45)",transition:"color .2s"}} aria-hidden="true"/>
+              {view===t.key&&<div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:darkMode?"#6BA8A4":"#fff"}}/>}
+            </button>
+          ))}
+          {/* Bouton + central */}
+          <button onClick={()=>setShowAddSeance(true)} style={{width:52,height:52,borderRadius:"50%",background:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(0,0,0,0.2)",flexShrink:0,marginTop:-8}}>
+            <i className="ti ti-plus" style={{fontSize:26,color:"#6BA8A4",fontWeight:700}} aria-hidden="true"/>
+          </button>
+          {/* 2 derniers onglets */}
+          {TABS.slice(2).map(t=>(
+            <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:"6px 14px",position:"relative"}}>
+              <i className={`ti ${t.icon}`} style={{fontSize:24,color:view===t.key?(darkMode?"#6BA8A4":"#fff"):"rgba(255,255,255,0.45)",transition:"color .2s"}} aria-hidden="true"/>
+              {view===t.key&&<div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:darkMode?"#6BA8A4":"#fff"}}/>}
             </button>
           ))}
         </div>
@@ -981,20 +1004,33 @@ function SeanceSearch({mySeances,logs,userId,notifs,onShowLog}) {
 }
 
 function CycleCard({cycle}) {
+  const [open,setOpen]=useState(false);
+  const nbEx=(cycle.seances||[{exercices:cycle.exercices||[]}]).reduce((s,sc)=>s+(sc.exercices||[]).length,0);
+  const nbSc=(cycle.seances||[]).length||1;
   return (
-    <div className="card" style={{marginBottom:8}}>
-      <div style={{fontSize:15,fontWeight:800,marginBottom:6}}>{cycle.nom}</div>
-      {(cycle.seances||[{exercices:cycle.exercices||[]}]).map((sc,si)=>(
-        <div key={si} style={{marginBottom:6}}>
-          {(cycle.seances||[]).length>1&&<div style={{fontSize:11,fontWeight:700,color:C.green,marginBottom:4}}>{sc.nom||`Séance ${si+1}`}</div>}
-          {(sc.exercices||[]).map((e,ei)=>(
-            <div key={ei} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderTop:`1px solid ${C.border}`}}>
-              <span style={{fontSize:13}}>{e.nom}</span>
-              <span style={{fontSize:12,color:C.muted,fontWeight:300}}>{e.series}×{e.reps}</span>
+    <div className="card" style={{marginBottom:8,cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <div style={{fontSize:14,fontWeight:700,color:C.text}}>{cycle.nom}</div>
+          <div style={{fontSize:11,color:C.muted,fontWeight:300,marginTop:2}}>{nbSc} séance{nbSc>1?"s":""} · {nbEx} exercice{nbEx>1?"s":""}</div>
+        </div>
+        <i className={`ti ${open?"ti-chevron-up":"ti-chevron-down"}`} style={{fontSize:16,color:C.light}} aria-hidden="true"/>
+      </div>
+      {open&&(
+        <div style={{marginTop:12}}>
+          {(cycle.seances||[{exercices:cycle.exercices||[]}]).map((sc,si)=>(
+            <div key={si} style={{marginBottom:8}}>
+              {(cycle.seances||[]).length>1&&<div style={{fontSize:11,fontWeight:700,color:C.green,marginBottom:4}}>{sc.nom||`Séance ${si+1}`}</div>}
+              {(sc.exercices||[]).map((e,ei)=>(
+                <div key={ei} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderTop:`1px solid ${C.border}`}}>
+                  <span style={{fontSize:13,color:C.text}}>{e.nom}</span>
+                  <span style={{fontSize:12,color:C.muted,fontWeight:300}}>{e.series}×{e.reps}</span>
+                </div>
+              ))}
             </div>
           ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -1925,4 +1961,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9o
+//v9p
