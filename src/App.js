@@ -415,7 +415,7 @@ export default function App() {
               {view===t.key&&<div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:"#fff"}}/>}
             </button>
           ))}
-          <button onClick={()=>setShowAddSeance(true)} style={{width:52,height:52,borderRadius:"50%",background:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",flexShrink:0,margin:"0 6px",marginTop:-12,marginBottom:-4}}>
+          <button onClick={()=>setShowAddSeance(true)} style={{width:52,height:52,borderRadius:"50%",background:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",flexShrink:0,margin:"0 8px",marginTop:-6,marginBottom:0}}>
             <i className="ti ti-plus" style={{fontSize:28,color:"#6BA8A4"}} aria-hidden="true"/>
           </button>
           {TABS.slice(2).map(t=>(
@@ -1959,4 +1959,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9q
+//v9r
