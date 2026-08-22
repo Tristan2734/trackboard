@@ -398,33 +398,30 @@ export default function App() {
 
       <nav style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",zIndex:50}}>
         <div style={{
-          background:darkMode?"rgba(20,28,26,0.75)":"#6BA8A4",
-          backdropFilter:darkMode?"blur(16px)":"none",
-          WebkitBackdropFilter:darkMode?"blur(16px)":"none",
+          background:darkMode?"rgba(15,22,20,0.55)":"rgba(107,168,164,0.65)",
+          backdropFilter:"blur(20px)",
+          WebkitBackdropFilter:"blur(20px)",
           borderRadius:50,
-          padding:"10px 20px",
+          padding:"10px 16px",
           display:"flex",
-          gap:8,
           alignItems:"center",
-          boxShadow:darkMode?"0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)":"0 8px 32px rgba(107,168,164,0.5)",
-          border:darkMode?"1px solid rgba(255,255,255,0.08)":"none",
+          boxShadow:darkMode?"0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.10)":"0 8px 32px rgba(107,168,164,0.45), inset 0 1px 0 rgba(255,255,255,0.35)",
+          border:darkMode?"1px solid rgba(255,255,255,0.10)":"1px solid rgba(255,255,255,0.4)",
+          gap:0,
         }}>
-          {/* 2 premiers onglets */}
           {TABS.slice(0,2).map(t=>(
-            <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:"6px 14px",position:"relative"}}>
-              <i className={`ti ${t.icon}`} style={{fontSize:24,color:view===t.key?(darkMode?"#6BA8A4":"#fff"):"rgba(255,255,255,0.45)",transition:"color .2s"}} aria-hidden="true"/>
-              {view===t.key&&<div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:darkMode?"#6BA8A4":"#fff"}}/>}
+            <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:"6px 16px",position:"relative"}}>
+              <i className={`ti ${t.icon}`} style={{fontSize:24,color:view===t.key?"#fff":"rgba(255,255,255,0.4)",transition:"color .2s"}} aria-hidden="true"/>
+              {view===t.key&&<div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:"#fff"}}/>}
             </button>
           ))}
-          {/* Bouton + central */}
-          <button onClick={()=>setShowAddSeance(true)} style={{width:52,height:52,borderRadius:"50%",background:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 16px rgba(0,0,0,0.2)",flexShrink:0,marginTop:-8}}>
-            <i className="ti ti-plus" style={{fontSize:26,color:"#6BA8A4",fontWeight:700}} aria-hidden="true"/>
+          <button onClick={()=>setShowAddSeance(true)} style={{width:52,height:52,borderRadius:"50%",background:"#fff",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 20px rgba(0,0,0,0.25)",flexShrink:0,margin:"0 6px",marginTop:-12,marginBottom:-4}}>
+            <i className="ti ti-plus" style={{fontSize:28,color:"#6BA8A4"}} aria-hidden="true"/>
           </button>
-          {/* 2 derniers onglets */}
           {TABS.slice(2).map(t=>(
-            <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:"6px 14px",position:"relative"}}>
-              <i className={`ti ${t.icon}`} style={{fontSize:24,color:view===t.key?(darkMode?"#6BA8A4":"#fff"):"rgba(255,255,255,0.45)",transition:"color .2s"}} aria-hidden="true"/>
-              {view===t.key&&<div style={{position:"absolute",bottom:1,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:darkMode?"#6BA8A4":"#fff"}}/>}
+            <button key={t.key} className="nav-btn" onClick={()=>setView(t.key)} style={{padding:"6px 16px",position:"relative"}}>
+              <i className={`ti ${t.icon}`} style={{fontSize:24,color:view===t.key?"#fff":"rgba(255,255,255,0.4)",transition:"color .2s"}} aria-hidden="true"/>
+              {view===t.key&&<div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:"#fff"}}/>}
             </button>
           ))}
         </div>
@@ -736,9 +733,10 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
 
       {/* Présence */}
       <Lbl>Ma présence</Lbl>
-      <div style={{display:"flex",gap:8,marginBottom:14}}>
-        <button onClick={()=>onPresence(seance.id,user.id,myStatus==="present"?null:"present")} style={{flex:1,padding:"12px",borderRadius:12,border:`1.5px solid ${myStatus==="present"?C.green:C.border}`,background:myStatus==="present"?C.greenLight:C.surface,color:myStatus==="present"?C.green:C.muted,fontWeight:700,cursor:"pointer",fontSize:14}}>✓ Je viens</button>
-        <button onClick={()=>onPresence(seance.id,user.id,myStatus==="absent"?null:"absent")} style={{flex:1,padding:"12px",borderRadius:12,border:`1.5px solid ${myStatus==="absent"?C.danger:C.border}`,background:myStatus==="absent"?C.dangerBg:C.surface,color:myStatus==="absent"?C.danger:C.muted,fontWeight:700,cursor:"pointer",fontSize:14}}>✗ Absent</button>
+      <div style={{marginBottom:14}}>
+        <button onClick={()=>onPresence(seance.id,user.id,myStatus==="present"?null:"present")} style={{width:"100%",padding:"12px",borderRadius:12,border:`1.5px solid ${myStatus==="present"?C.green:C.border}`,background:myStatus==="present"?C.greenLight:C.surface,color:myStatus==="present"?C.green:C.muted,fontWeight:700,cursor:"pointer",fontSize:14}}>
+          {myStatus==="present"?"✓ Je viens":"Je viens"}
+        </button>
       </div>
       {myStatus==="present"&&<button onClick={()=>onShowLog({seance,athleteId:user.id})} style={{width:"100%",padding:"12px",borderRadius:12,border:`1.5px solid ${notifs[`${user.id}_${seance.id}`]?C.danger:C.green}`,background:notifs[`${user.id}_${seance.id}`]?C.dangerBg:C.greenLight,color:notifs[`${user.id}_${seance.id}`]?C.danger:C.green,fontWeight:700,cursor:"pointer",fontSize:14,marginBottom:14}}>{logs[`${user.id}_${seance.id}`]?"Modifier mon bilan":"Remplir mon bilan"}</button>}
 
@@ -1961,4 +1959,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9p
+//v9q
