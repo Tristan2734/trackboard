@@ -1192,6 +1192,242 @@ function StatsView({mySeances,logs,userId}) {
   );
 }
 
+// Firebase helpers pour objectifs et planification
+const getObjectifs=(userId,cb)=>onValue(ref(db,`objectifs/${userId}`),s=>cb(s.val()||{}));
+const saveObjectifs=(userId,data)=>set(ref(db,`objectifs/${userId}`),data);
+const getPlanif=(userId,cb)=>onValue(ref(db,`planif/${userId}`),s=>cb(s.val()||{}));
+const savePlanif=(userId,data)=>set(ref(db,`planif/${userId}`),data);
+
+const PHASES=[
+  {key:"dev",label:"Développement",color:"#C0392B"},
+  {key:"recup",label:"Récup / Reprise",color:"#2D6A4F"},
+  {key:"affutage",label:"Affûtage",color:"#1A5276"},
+  {key:"compe",label:"Compétition",color:"#B7950B"},
+  {key:"objectif",label:"Gros objectif 💎",color:"#6C3483"},
+  {key:"repos",label:"Repos / Absence",color:"#888"},
+];
+
+const MOIS_HIVER=["Septembre","Octobre","Novembre","Décembre","Janvier","Février"];
+const MOIS_ETE=["Mars","Avril","Mai","Juin","Juillet","Août"];
+
+function ObjectifsView({userId,isCoach}) {
+  const [data,setData]=useState({});
+  const [saved,setSaved]=useState(false);
+  useEffect(()=>{const u=getObjectifs(userId,setData);return()=>u&&u();},[userId]);
+  function save(){saveObjectifs(userId,data);setSaved(true);setTimeout(()=>setSaved(false),2000);}
+  return (
+    <div>
+      {["hiver","ete"].map(s=>(
+        <div key={s} style={{marginBottom:16}}>
+          <Lbl>{s==="hiver"?"❄️ Objectif Hiver 2026/2027":"☀️ Objectif Été 2027"}</Lbl>
+          <textarea
+            value={data[s]||""}
+            onChange={e=>setData(p=>({...p,[s]:e.target.value}))}
+            rows={4}
+            className="inp"
+            style={{resize:"none",lineHeight:1.6}}
+            placeholder={s==="hiver"?"Ex: Passer sous 8\"00 sur 60mH en salle...":"Ex: Se qualifier pour les championnats de France U20..."}
+          />
+        </div>
+      ))}
+      <button className="btn-primary" onClick={save} style={{background:saved?C.greenMid:C.green}}>
+        {saved?"✓ Sauvegardé":"Sauvegarder"}
+      </button>
+    </div>
+  );
+}
+
+function PlanificationView({userId,isCoach,athletesList,user}) {
+  const [saison,setSaison]=useState("ete");
+  const [planif,setPlanif]=useState({});
+  const [objectifs,setObjectifs]=useState({});
+  const [selected,setSelected]=useState([]);
+  const [editMode,setEditMode]=useState(false);
+  const [noteInput,setNoteInput]=useState("");
+  const [expandedNote,setExpandedNote]=useState(null);
+
+  useEffect(()=>{const u=getPlanif(userId,setPlanif);return()=>u&&u();},[userId]);
+  useEffect(()=>{const u=getObjectifs(userId,setObjectifs);return()=>u&&u();},[userId]);
+
+  const moisList=saison==="hiver"?MOIS_HIVER:MOIS_ETE;
+  const annee=saison==="hiver"?"2026/2027":"2027";
+  const planifSaison=planif[saison]||{};
+
+  // Mois présents dans la planif
+  const editedMois=moisList.filter(m=>planifSaison[m]&&Object.values(planifSaison[m]).some(s=>s?.phase));
+  const displayMois=editedMois.length>0?editedMois:[];
+
+  function getKey(mois,sem){return `${mois}_S${sem}`;}
+
+  function toggleSel(key){
+    setSelected(p=>p.includes(key)?p.filter(k=>k!==key):[...p,key]);
+    setEditMode(true);
+  }
+
+  function applyPhase(phase){
+    const updated={...planifSaison};
+    selected.forEach(key=>{
+      const [mois,semStr]=key.split("_");
+      if(!updated[mois])updated[mois]={};
+      updated[mois][semStr]={...updated[mois][semStr],phase,note:noteInput||updated[mois]?.[semStr]?.note||""};
+    });
+    savePlanif(userId,{...planif,[saison]:updated});
+    setSelected([]);setEditMode(false);setNoteInput("");
+  }
+
+  function clearPhase(){
+    const updated={...planifSaison};
+    selected.forEach(key=>{
+      const [mois,semStr]=key.split("_");
+      if(updated[mois])updated[mois][semStr]={};
+    });
+    savePlanif(userId,{...planif,[saison]:updated});
+    setSelected([]);setEditMode(false);
+  }
+
+  function addMois(pos){
+    // trouver le mois à ajouter
+    const currentIdx=moisList.indexOf(displayMois[0]);
+    const lastIdx=moisList.indexOf(displayMois[displayMois.length-1]);
+    let newMois;
+    if(pos==="avant"&&currentIdx>0)newMois=moisList[currentIdx-1];
+    else if(pos==="apres"&&lastIdx<moisList.length-1)newMois=moisList[lastIdx+1];
+    if(!newMois)return;
+    const updated={...planifSaison,[newMois]:{"S1":{},"S2":{},"S3":{},"S4":{}}};
+    savePlanif(userId,{...planif,[saison]:updated});
+  }
+
+  const objectifActuel=objectifs[saison==="hiver"?"hiver":"ete"];
+
+  return (
+    <div>
+      {/* Switcher saison */}
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        {[["hiver","❄️ Hiver"],["ete","☀️ Été"]].map(([k,l])=>(
+          <button key={k} onClick={()=>{setSaison(k);setSelected([]);setEditMode(false);}} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${saison===k?C.green:C.border}`,background:saison===k?C.greenLight:C.surface,color:saison===k?C.green:C.muted,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* Légende phases - compacte */}
+      <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:12}}>
+        {PHASES.map(p=>(
+          <span key={p.key} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:20,background:C.surface,border:`1px solid ${C.border}`,fontSize:9,fontWeight:600,color:C.muted}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0,display:"inline-block"}}/>
+            {p.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Bouton ajouter avant */}
+      {displayMois.length>0&&moisList.indexOf(displayMois[0])>0&&(
+        <button onClick={()=>addMois("avant")} style={{width:"100%",padding:"7px",border:`1px dashed ${C.border}`,borderRadius:10,background:"transparent",color:C.light,fontSize:11,fontWeight:600,cursor:"pointer",marginBottom:10}}>
+          + {moisList[moisList.indexOf(displayMois[0])-1]}
+        </button>
+      )}
+
+      {/* Si aucun mois édité */}
+      {displayMois.length===0&&(
+        <div style={{textAlign:"center",padding:"24px 0"}}>
+          <div style={{fontSize:13,color:C.light,marginBottom:12}}>Aucune planification pour cette saison</div>
+          <button onClick={()=>{
+            const first=moisList[0];
+            const updated={...planifSaison,[first]:{"S1":{},"S2":{},"S3":{},"S4":{}}};
+            savePlanif(userId,{...planif,[saison]:updated});
+          }} style={{padding:"10px 20px",borderRadius:10,background:C.greenLight,border:`1.5px solid ${C.green}`,color:C.green,fontWeight:700,fontSize:13,cursor:"pointer"}}>
+            Commencer la planification
+          </button>
+        </div>
+      )}
+
+      {/* Mois */}
+      {displayMois.map(mois=>(
+        <div key={mois} style={{marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>{mois} {annee}</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:5}}>
+            {[1,2,3,4].map(sem=>{
+              const key=getKey(mois,sem);
+              const cellData=planifSaison[mois]?.[`S${sem}`]||{};
+              const phase=PHASES.find(p=>p.key===cellData.phase);
+              const isSel=selected.includes(key);
+              return (
+                <div key={sem} onClick={()=>toggleSel(key)} style={{
+                  height:58,borderRadius:10,cursor:"pointer",position:"relative",
+                  background:phase?phase.color:C.alt,
+                  border:isSel?"2.5px solid #D4A017":phase?"none":`1.5px dashed ${C.border}`,
+                  display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+                  padding:4,transition:"all .15s",
+                  opacity:isSel?0.85:1,
+                }}>
+                  <div style={{fontSize:8,fontWeight:700,color:phase?"rgba(255,255,255,0.6)":C.light,position:"absolute",top:4,left:0,right:0,textAlign:"center"}}>S{sem}</div>
+                  {phase&&<div style={{fontSize:7,fontWeight:700,color:"rgba(255,255,255,0.85)",textAlign:"center",marginTop:8,lineHeight:1.2,padding:"0 2px"}}>{phase.label.replace(" 💎","")}</div>}
+                  {cellData.note&&(
+                    <div onClick={e=>{e.stopPropagation();setExpandedNote(expandedNote===key?null:key);}} style={{fontSize:6,color:phase?"rgba(255,255,255,0.6)":C.light,textAlign:"center",padding:"0 3px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%",marginTop:2}}>
+                      {cellData.note}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {/* Notes expandées */}
+          {[1,2,3,4].map(sem=>{
+            const key=getKey(mois,sem);
+            const cellData=planifSaison[mois]?.[`S${sem}`]||{};
+            if(expandedNote===key&&cellData.note)return(
+              <div key={sem} style={{marginTop:4,padding:"8px 10px",borderRadius:8,background:C.surface,border:`1px solid ${C.border}`,fontSize:11,color:C.text,lineHeight:1.5}}>
+                <strong>S{sem} :</strong> {cellData.note}
+              </div>
+            );
+            return null;
+          })}
+        </div>
+      ))}
+
+      {/* Bouton ajouter après */}
+      {displayMois.length>0&&moisList.indexOf(displayMois[displayMois.length-1])<moisList.length-1&&(
+        <button onClick={()=>addMois("apres")} style={{width:"100%",padding:"7px",border:`1px dashed ${C.border}`,borderRadius:10,background:"transparent",color:C.light,fontSize:11,fontWeight:600,cursor:"pointer",marginTop:4,marginBottom:12}}>
+          + {moisList[moisList.indexOf(displayMois[displayMois.length-1])+1]}
+        </button>
+      )}
+
+      {/* Palette édition */}
+      {editMode&&selected.length>0&&(
+        <div style={{position:"sticky",bottom:90,zIndex:100,background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:14,boxShadow:"0 4px 24px rgba(0,0,0,0.12)"}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:.5,textTransform:"uppercase",marginBottom:10}}>{selected.length} semaine{selected.length>1?"s":""} sélectionnée{selected.length>1?"s":""}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
+            {PHASES.map(p=>(
+              <button key={p.key} onClick={()=>applyPhase(p.key)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:10,background:C.alt,border:"none",cursor:"pointer",textAlign:"left"}}>
+                <span style={{width:12,height:12,borderRadius:"50%",background:p.color,flexShrink:0}}/>
+                <span style={{fontSize:13,fontWeight:600,color:C.text}}>{p.label}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.muted,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Note (optionnel)</div>
+            <textarea value={noteInput} onChange={e=>setNoteInput(e.target.value)} rows={2} className="inp" style={{resize:"none",fontSize:13}} placeholder="Ex: Coupure active, natation légère..."/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={clearPhase} className="btn-ghost" style={{flex:1,fontSize:12}}>Effacer</button>
+            <button onClick={()=>{setSelected([]);setEditMode(false);setNoteInput("");}} className="btn-ghost" style={{flex:1,fontSize:12}}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {/* Objectif rappel */}
+      {objectifActuel&&(
+        <div style={{marginTop:16,padding:"10px 14px",borderRadius:12,background:C.greenLight,border:`1px solid ${C.greenAccent}44`}}>
+          <div style={{fontSize:9,fontWeight:700,color:C.greenMid,letterSpacing:.5,textTransform:"uppercase",marginBottom:4}}>
+            {saison==="hiver"?"❄️ Objectif hiver":"☀️ Objectif été"}
+          </div>
+          <div style={{fontSize:12,color:C.green,fontWeight:300,lineHeight:1.5}}>{objectifActuel}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,isCoach,onSelSeance}) {
   const viewerId=user.id;
   const mySeances=seancesList.filter(s=>(s.presences||{})[user.id]==="present");
@@ -1237,42 +1473,53 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
 
   return (
     <div style={{padding:"16px 20px"}}>
-      {onEdit&&<button className="btn-ghost" onClick={onEdit} style={{marginBottom:16,width:"100%"}}>Modifier mon profil</button>}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
-        {[{l:"Séances",v:mySeances.length},{l:"Bilans remplis",v:mySeances.filter(s=>logs[`${user.id}_${s.id}`]).length}].map(st=>(
-          <div key={st.l} style={{padding:"14px",borderRadius:12,background:C.surface,border:`1px solid ${C.border}`}}>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:1,color:C.light,textTransform:"uppercase",marginBottom:4}}>{st.l}</div>
-            <div style={{fontSize:28,fontWeight:800,color:C.text}}>{st.v}</div>
+      {/* Header profil - photo + infos + stats petites */}
+      <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16}}>
+        {/* Photo / Avatar */}
+        <div style={{flexShrink:0}}>
+          <Avatar nom={user.nom} prenom={user.prenom} photo={user.photo} size={64}/>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:18,fontWeight:800,color:C.text,marginBottom:6}}>{user.prenom} {user.nom}</div>
+          {/* Badges */}
+          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
+            {user.categorie&&<span style={{padding:"2px 8px",borderRadius:20,background:C.greenLight,color:C.green,fontSize:10,fontWeight:700}}>{user.categorie}</span>}
+            {user.groupe&&<span style={{padding:"2px 8px",borderRadius:20,background:C.alt,color:C.muted,fontSize:10,fontWeight:600}}>{user.groupe}</span>}
+            {user.club&&<span style={{padding:"2px 8px",borderRadius:20,background:C.alt,color:C.muted,fontSize:10,fontWeight:600}}>{user.club}</span>}
+            {user.licence&&<span style={{padding:"2px 8px",borderRadius:20,background:C.alt,color:C.muted,fontSize:10,fontWeight:600}}>{user.licence}</span>}
           </div>
+          {/* Stats petites */}
+          <div style={{display:"flex",gap:12}}>
+            <div>
+              <span style={{fontSize:16,fontWeight:800,color:C.text}}>{mySeances.length}</span>
+              <span style={{fontSize:9,fontWeight:600,color:C.light,textTransform:"uppercase",letterSpacing:.4,marginLeft:4}}>séances</span>
+            </div>
+            {!isCoach&&<div style={{paddingLeft:12,borderLeft:`1px solid ${C.border}`}}>
+              <span style={{fontSize:16,fontWeight:800,color:C.text}}>{mySeances.filter(s=>logs[`${user.id}_${s.id}`]).length}</span>
+              <span style={{fontSize:9,fontWeight:600,color:C.light,textTransform:"uppercase",letterSpacing:.4,marginLeft:4}}>bilans</span>
+            </div>}
+            {(user.records&&Object.values(user.records).some(Boolean))&&Object.entries(user.records||{}).filter(([,v])=>v).slice(0,1).map(([k,v])=>(
+              <div key={k} style={{paddingLeft:12,borderLeft:`1px solid ${C.border}`}}>
+                <span style={{fontSize:16,fontWeight:800,color:C.green}}>{v}</span>
+                <span style={{fontSize:9,fontWeight:600,color:C.light,textTransform:"uppercase",letterSpacing:.4,marginLeft:4}}>{k}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {onEdit&&<button onClick={onEdit} style={{background:C.alt,border:"none",borderRadius:10,padding:"7px 12px",fontSize:11,fontWeight:700,color:C.muted,cursor:"pointer",flexShrink:0}}>Modifier</button>}
+      </div>
+
+      {/* Onglets */}
+      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:16,paddingBottom:2}}>
+        {["historique","stats","planification","objectifs","notes"].map(t=>(
+          <button key={t} onClick={()=>setMainTab(t)} style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${mainTab===t?C.green:C.border}`,background:mainTab===t?C.green:"transparent",color:mainTab===t?"#fff":C.muted,fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0,textTransform:"capitalize",whiteSpace:"nowrap"}}>
+            {t==="historique"?"Historique":t==="stats"?"Bilan & Évolution":t==="planification"?"Planification":t==="objectifs"?"Objectifs":"Notes"}
+          </button>
         ))}
       </div>
 
-      {/* Infos athlète */}
-      {(user.categorie||user.club||user.sexe||user.licence)&&(
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
-          {user.categorie&&<span className="chip chip-on" style={{fontSize:11}}>{user.categorie}</span>}
-          {user.sexe&&<span style={{padding:"4px 10px",borderRadius:20,background:C.alt,color:C.muted,fontSize:11,fontWeight:600}}>{user.sexe}</span>}
-          {user.club&&<span style={{padding:"4px 10px",borderRadius:20,background:C.alt,color:C.muted,fontSize:11,fontWeight:600}}>🏟 {user.club}</span>}
-          {user.groupe&&<span style={{padding:"4px 10px",borderRadius:20,background:C.greenLight,color:C.green,fontSize:11,fontWeight:700}}>{user.groupe}</span>}
-          {user.licence&&<span style={{padding:"4px 10px",borderRadius:20,background:C.alt,color:C.muted,fontSize:11,fontWeight:600}}>🪪 {user.licence}</span>}
-        </div>
-      )}
-
-      {(user.records&&Object.values(user.records).some(Boolean))&&(
-        <div style={{marginBottom:20}}>
-          <Lbl>Records</Lbl>
-          <div className="card">
-            {Object.entries(user.records||{}).map(([k,v])=>v?(
-              <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${C.border}`}}>
-                <span style={{fontSize:13,color:C.muted,fontWeight:300}}>{k}</span>
-                <span style={{fontSize:14,fontWeight:800,color:C.green}}>{v}</span>
-              </div>
-            ):null)}
-          </div>
-        </div>
-      )}
-
-      {allMyCycles.length>0&&(
+      {/* Cycles muscu */}
+      {mainTab==="historique"&&allMyCycles.length>0&&(
         <div style={{marginBottom:24}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
             <div style={{fontSize:13,fontWeight:800,color:C.text}}>Muscu</div>
@@ -1284,42 +1531,28 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
               ))}
             </div>
           </div>
-          {muscuTab==="actif"&&(
-            activeCycles.length===0
-              ?<p className="empty">Aucun cycle actif.</p>
-              :activeCycles.map(c=><CycleCard key={c.id} cycle={c}/>)
-          )}
-          {muscuTab==="historique"&&(
-            archivedCycles.length===0
-              ?<p className="empty">Aucun cycle archivé.</p>
-              :archivedCycles.map(c=>(
-                <div key={c.id} style={{opacity:.65}}>
-                  <CycleCard cycle={c}/>
-                  <div style={{fontSize:11,color:C.muted,fontWeight:300,marginTop:-6,marginBottom:8,paddingLeft:4}}>
-                    Archivé le {c.assignes[user.id]?.dateFin?new Date(c.assignes[user.id].dateFin).toLocaleDateString("fr-FR"):"—"}
-                  </div>
-                </div>
-              ))
-          )}
+          {muscuTab==="actif"&&(activeCycles.length===0?<p className="empty">Aucun cycle actif.</p>:activeCycles.map(c=><CycleCard key={c.id} cycle={c}/>))}
+          {muscuTab==="historique"&&(archivedCycles.length===0?<p className="empty">Aucun cycle archivé.</p>:archivedCycles.map(c=>(
+            <div key={c.id} style={{opacity:.65}}><CycleCard cycle={c}/>
+              <div style={{fontSize:11,color:C.muted,fontWeight:300,marginTop:-6,marginBottom:8,paddingLeft:4}}>
+                Archivé le {c.assignes[user.id]?.dateFin?new Date(c.assignes[user.id].dateFin).toLocaleDateString("fr-FR"):"—"}
+              </div>
+            </div>
+          )))}
         </div>
       )}
 
-      {/* Notes section */}
-      <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:"14px 16px",marginBottom:24}}>
-        <NotesSection userId={user.id} viewerId={viewerId} isCoach={isCoach}/>
-      </div>
-
-      {/* Historique */}
-      {/* Onglets Historique / Stats */}
-      <div style={{display:"flex",gap:8,marginBottom:16}}>
-        {[["historique","Historique"],["stats","Bilan & Évolution"]].map(([k,l])=>(
-          <button key={k} onClick={()=>setMainTab(k)} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${mainTab===k?C.green:C.border}`,background:mainTab===k?C.greenLight:C.surface,color:mainTab===k?C.green:C.muted,fontWeight:mainTab===k?700:400,fontSize:13,cursor:"pointer"}}>
-            {l}
-          </button>
-        ))}
-      </div>
-
       {mainTab==="stats"&&<StatsView mySeances={mySeances} logs={logs} userId={user.id}/>}
+
+      {mainTab==="notes"&&(
+        <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:"14px 16px"}}>
+          <NotesSection userId={user.id} viewerId={viewerId} isCoach={isCoach}/>
+        </div>
+      )}
+
+      {mainTab==="objectifs"&&<ObjectifsView userId={user.id} isCoach={isCoach}/>}
+
+      {mainTab==="planification"&&<PlanificationView userId={user.id} isCoach={isCoach} athletesList={[]} user={user}/>}
 
       {mainTab==="historique"&&(
         <>
@@ -1959,4 +2192,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v9r
+//v10
