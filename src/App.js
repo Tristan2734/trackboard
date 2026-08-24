@@ -321,7 +321,21 @@ export default function App() {
   useEffect(()=>{const s=localStorage.getItem("tb_user");if(s){const u=JSON.parse(s);setUser(u);setIsCoach(u.role==="coach");}},[]);
   useEffect(()=>{
     if(!user)return;
-    const us=[getUsers(setUsers),getSeances(setSeances),getLogs(setLogs),getComps(setComps),getCycles(setCycles)];
+    const us=[getUsers(setUsers),getSeances(rawSeances=>{
+      // Migration: séances sans dateISO → calculer et stocker la vraie date
+      const seancesObj=rawSeances||{};
+      Object.entries(seancesObj).forEach(([id,s])=>{
+        if(!s.dateISO&&(s.weekOffset!==undefined||s.jour!==undefined)){
+          const wo=s.weekOffset||0;
+          const jour=s.jour||0;
+          const ws=weekStart(wo);
+          ws.setDate(ws.getDate()+jour);
+          const dateISO=ws.toISOString().slice(0,10);
+          updateSeance(id,{dateISO});
+        }
+      });
+      setSeances(seancesObj);
+    }),getLogs(setLogs),getComps(setComps),getCycles(setCycles)];
     // Message du jour
     const unMsg=onValue(ref(db,"msgJour"),s=>{
       const msg=s.val();
@@ -692,13 +706,23 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   const [editGroupe,setEditGroupe]=useState(false);
   const [groupeVal,setGroupeVal]=useState(seance.groupe||"");
   const [editHoraires,setEditHoraires]=useState(false);
-  const [jour,setJour]=useState(seance.jour??0);
+  // Support dateISO et ancien format
+  const initDateISO=seance.dateISO||(()=>{
+    const ws=weekStart(seance.weekOffset||0);
+    ws.setDate(ws.getDate()+(seance.jour||0));
+    return ws.toISOString().slice(0,10);
+  })();
+  const [dateISO,setDateISO]=useState(initDateISO);
   const [hD,setHD]=useState(seance.heureDebut||"10:00");
   const [hF,setHF]=useState(seance.heureFin||"12:00");
 
   function saveContenu(){onUpdate(seance.id,{contenu});setEditContenu(false);}
   function saveColor(c){setColor(c);onUpdate(seance.id,{color:c});setEditColor(false);}
-  function saveHoraires(){onUpdate(seance.id,{jour,heureDebut:hD,heureFin:hF});setEditHoraires(false);}
+  function saveHoraires(){
+    const {weekOffset:wo,jour}=parseDateISO(dateISO);
+    onUpdate(seance.id,{dateISO,jour,weekOffset:wo,heureDebut:hD,heureFin:hF});
+    setEditHoraires(false);
+  }
   function saveGroupe(g){setGroupeVal(g);onUpdate(seance.id,{groupe:g});setEditGroupe(false);}
 
   return (
@@ -736,10 +760,9 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
       <div style={{marginBottom:14}}>
         {editHoraires?(
           <div style={{padding:"12px",background:C.alt,borderRadius:12}}>
-            <Lbl>Modifier horaires / jour</Lbl>
-            <select value={jour} onChange={e=>setJour(+e.target.value)} className="inp" style={{marginBottom:8}}>
-              {JOURS.map((j,i)=><option key={i} value={i}>{j}</option>)}
-            </select>
+            <Lbl>Modifier date / horaires</Lbl>
+            <input type="date" value={dateISO} onChange={e=>setDateISO(e.target.value)} className="inp" style={{marginBottom:8}}/>
+            {dateISO&&<div style={{fontSize:11,color:C.green,fontWeight:600,marginBottom:8}}>{JOURS[parseDateISO(dateISO).jour]} · {new Date(dateISO+'T12:00:00').toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</div>}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
               <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Début</div><input type="time" value={hD} onChange={e=>setHD(e.target.value)} className="inp"/></div>
               <div><div style={{fontSize:11,color:C.muted,marginBottom:4}}>Fin</div><input type="time" value={hF} onChange={e=>setHF(e.target.value)} className="inp"/></div>
@@ -2363,4 +2386,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10h
+//v10i
