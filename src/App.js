@@ -667,6 +667,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                     <div key={dayIdx} onClick={()=>onSel(s)} style={{borderLeft:`1px solid ${C.border}`,padding:2,cursor:"pointer"}}>
                       <div style={{borderRadius:6,padding:"3px 5px",background:phase?phase.rgba:C.greenLight,borderLeft:`3px solid ${phase?phase.hex:C.green}`,height:`${duration*50-6}px`,overflow:"hidden"}}>
                         <div style={{fontSize:9,fontWeight:700,color:C.text,lineHeight:1.2}}>{s.heureDebut}–{s.heureFin}</div>
+                        {s.type==="muscu"&&<div style={{fontSize:8,color:C.muted}}>◆ {s.cycleName||"Muscu"}</div>}
                         {(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:8,color:C.muted}}>{d}</div>)}
                       </div>
                     </div>
@@ -841,9 +842,21 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
             </div>
           </div>
         ):(
-          <div onClick={()=>setEditContenu(true)} style={{padding:"10px 14px",borderRadius:10,background:C.alt,cursor:"pointer",border:`1px dashed ${C.border}`}}>
-            <div style={{fontSize:11,color:C.muted,marginBottom:4,fontWeight:600}}>CONTENU · Tap pour modifier</div>
-            <div style={{fontSize:14,color:contenu?C.text:C.light,fontWeight:300,lineHeight:1.5}}>{contenu||"Ajouter un contenu..."}</div>
+          <div onClick={()=>seance.type==="muscu"&&!seance.cycleId?setEditLibreExos(true):setEditContenu(true)} style={{padding:"10px 14px",borderRadius:10,background:C.alt,cursor:"pointer",border:`1px dashed ${C.border}`}}>
+            <div style={{fontSize:11,color:C.muted,marginBottom:4,fontWeight:600}}>
+              {seance.type==="muscu"&&!seance.cycleId?"EXERCICES · Tap pour modifier":"CONTENU · Tap pour modifier"}
+            </div>
+            {seance.type==="muscu"&&!seance.cycleId?(
+              (seance.libreExos||[]).length>0
+                ?<div style={{display:"flex",flexDirection:"column",gap:3}}>
+                  {(seance.libreExos||[]).map((e,i)=>(
+                    <div key={i} style={{fontSize:13,color:C.text,fontWeight:400}}>{e.nom} <span style={{fontSize:11,color:C.muted}}>{e.series}×{e.reps}</span></div>
+                  ))}
+                </div>
+                :<div style={{fontSize:14,color:C.light,fontWeight:300}}>Ajouter des exercices...</div>
+            ):(
+              <div style={{fontSize:14,color:contenu?C.text:C.light,fontWeight:300,lineHeight:1.5}}>{contenu||"Ajouter un contenu..."}</div>
+            )}
           </div>
         )}
       </div>
@@ -1213,9 +1226,17 @@ function StatsView({mySeances,logs,userId}) {
       if(log.forme!=null)weekMap[wo].forms.push(log.forme);
       if(log.fatigue!=null)weekMap[wo].fatigues.push(log.fatigue);
     }
-    // Disciplines
+    // Disciplines - inclure muscu et exercices libres
     const discs=log?.myDiscs||s.disciplines||[];
-    discs.forEach(d=>weekMap[wo].discs[d]=(weekMap[wo].discs[d]||0)+1);
+    // Si muscu et log avec exos, utiliser les noms d'exos comme disciplines
+    if(s.type==="muscu"&&log?.exos?.length>0){
+      log.exos.filter(e=>e.nom).forEach(e=>weekMap[wo].discs[e.nom]=(weekMap[wo].discs[e.nom]||0)+1);
+    } else if(s.type==="muscu"&&discs.length===0){
+      // Pas de disciplines → ajouter "Muscu" générique
+      weekMap[wo].discs["Muscu"]=(weekMap[wo].discs["Muscu"]||0)+1;
+    } else {
+      discs.forEach(d=>weekMap[wo].discs[d]=(weekMap[wo].discs[d]||0)+1);
+    }
     // Types
     const t=s.type||"piste";
     weekMap[wo].types[t]=(weekMap[wo].types[t]||0)+1;
@@ -2203,11 +2224,6 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
         {type==="muscu"&&(
           <div>
             <Lbl>Cycle muscu</Lbl>
-            {/* Saisie libre EN PREMIER */}
-            <div onClick={()=>{setCycleId("");setSeanceIdx(0);}} style={{padding:"10px 14px",borderRadius:10,background:cycleId===""?C.greenLight:C.alt,cursor:"pointer",marginBottom:8,border:`1.5px solid ${cycleId===""?C.green:C.border}`}}>
-              <span style={{fontSize:13,fontWeight:700,color:cycleId===""?C.green:C.muted}}>Saisie libre</span>
-              <div style={{fontSize:10,color:cycleId===""?C.green:C.light,fontWeight:300,marginTop:1}}>Créer les exercices directement</div>
-            </div>
             <input className="inp" placeholder="Rechercher un cycle..." value={cycleSearch} onChange={e=>setCycleSearch(e.target.value)} style={{marginBottom:6}}/>
             <div style={{maxHeight:140,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:10,marginBottom:cycleSeances.length>1?8:0}}>
               {filteredCycles.map(c=>(
@@ -2232,7 +2248,13 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
           </div>
         )}
 
-        {/* Exercices libres pour muscu sans cycle */}
+        {/* Saisie libre + Exercices */}
+        {type==="muscu"&&(
+          <div onClick={()=>{setCycleId("");setSeanceIdx(0);}} style={{padding:"10px 14px",borderRadius:10,background:cycleId===""?C.greenLight:C.alt,cursor:"pointer",marginBottom:8,border:`1.5px solid ${cycleId===""?C.green:C.border}`}}>
+            <span style={{fontSize:13,fontWeight:700,color:cycleId===""?C.green:C.muted}}>Saisie libre</span>
+            <div style={{fontSize:10,color:cycleId===""?C.green:C.light,fontWeight:300,marginTop:1}}>Créer les exercices directement</div>
+          </div>
+        )}
         {type==="muscu"&&!cycleId&&(
           <div>
             <Lbl>Exercices de la séance</Lbl>
@@ -2500,4 +2522,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10m
+//v10n
