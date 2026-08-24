@@ -98,7 +98,7 @@ function weekStart(offset = 0) {
 // Convertir une date ISO en weekOffset relatif à aujourd'hui
 function isoToWeekOffset(dateISO) {
   if(!dateISO) return 0;
-  const d = new Date(dateISO);
+  const d = new Date(dateISO + 'T12:00:00');
   d.setHours(0,0,0,0);
   const today = new Date();
   const todayMonday = new Date(today);
@@ -128,7 +128,8 @@ function getDateISO(weekOffset, jourIndex) {
 // Obtenir le weekOffset et le jourIndex depuis une dateISO
 function parseDateISO(dateISO) {
   if(!dateISO) return {weekOffset:0, jour:0};
-  const d = new Date(dateISO);
+  // Forcer midi local pour éviter le décalage UTC
+  const d = new Date(dateISO + 'T12:00:00');
   const jourIndex = (d.getDay()||7)-1; // 0=lundi...6=dimanche
   const wo = isoToWeekOffset(dateISO);
   return {weekOffset:wo, jour:jourIndex};
@@ -1697,13 +1698,18 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
           <div style={{fontSize:11,fontWeight:700,color:C.green,letterSpacing:.5,marginBottom:6,padding:"4px 10px",background:C.greenLight,borderRadius:8,display:"inline-block"}}>{wk}</div>
           {items.sort((a,b)=>(a.s.jour||0)-(b.s.jour||0)).map(({s,log})=>{
             const need=notifs[`${user.id}_${s.id}`];
+            const jourLabel=s.dateISO?new Date(s.dateISO+'T12:00:00').toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"short"}):JOURS[s.jour||0];
             return (
               <div key={s.id} onClick={()=>onSelSeance?onSelSeance(s):onShowLog({seance:s,athleteId:user.id})} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:14,background:need?C.dangerBg:C.surface,border:`1px solid ${need?C.dangerBorder:C.border}`,marginBottom:6,cursor:"pointer"}}>
                 <SeanceIcon type={s.type} size={34}/>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:14,fontWeight:700}}>{JOURS[s.jour]} · {s.heureDebut}</div>
-                  {s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{s.contenu}</div>}
-                  {log?<div style={{fontSize:12,color:C.green,fontWeight:500}}>✓ Bilan rempli · Forme {log.forme}/10</div>:<div style={{fontSize:12,color:need?C.danger:C.light,fontWeight:need?600:300}}>{need?"Bilan à remplir":"—"}</div>}
+                  <div style={{fontSize:14,fontWeight:700,textTransform:"capitalize"}}>{jourLabel} · {s.heureDebut}</div>
+                  {/* Disciplines en priorité, contenu en fallback */}
+                  {(s.disciplines||[]).length>0
+                    ?<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:2}}>{(s.disciplines||[]).slice(0,4).map(d=><span key={d} style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:6,background:C.alt,color:C.muted}}>{d}</span>)}</div>
+                    :(s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{s.contenu}</div>)
+                  }
+                  {log?<div style={{fontSize:12,color:C.green,fontWeight:500,marginTop:2}}>✓ Bilan rempli · Forme {log.forme}/10</div>:<div style={{fontSize:12,color:need?C.danger:C.light,fontWeight:need?600:300,marginTop:2}}>{need?"Bilan à remplir":"—"}</div>}
                 </div>
                 <i className="ti ti-chevron-right" style={{fontSize:16,color:C.light,flexShrink:0}} aria-hidden="true"/>
               </div>
@@ -2399,4 +2405,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10j
+//v10k
