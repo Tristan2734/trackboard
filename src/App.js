@@ -1244,6 +1244,7 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
   const [selected,setSelected]=useState([]);
   const [editMode,setEditMode]=useState(false);
   const [noteInput,setNoteInput]=useState("");
+  const [selectedPhase,setSelectedPhase]=useState(null);
   const [expandedNote,setExpandedNote]=useState(null);
 
   useEffect(()=>{const u=getPlanif(userId,setPlanif);return()=>u&&u();},[userId]);
@@ -1271,7 +1272,7 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
       updated[mois][semStr]={phase,note:noteInput||updated[mois]?.[semStr]?.note||""};
     });
     savePlanif(userId,{...planif,[saison]:updated});
-    setSelected([]);setEditMode(false);setNoteInput("");
+    setSelected([]);setEditMode(false);setNoteInput("");setSelectedPhase(null);
   }
 
   function clearPhase(){
@@ -1320,7 +1321,32 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
         ))}
       </div>
 
-      {/* Bouton ajouter avant */}
+      {/* Palette édition - EN HAUT quand sélection active */}
+      {editMode&&selected.length>0&&(
+        <div style={{background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:14,boxShadow:"0 4px 24px rgba(0,0,0,0.12)",marginBottom:14}}>
+          <div style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:.5,textTransform:"uppercase",marginBottom:10}}>{selected.length} semaine{selected.length>1?"s":""} sélectionnée{selected.length>1?"s":""}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:10}}>
+            {PHASES.map(p=>(
+              <button key={p.key} onClick={()=>setSelectedPhase(p.key)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:10,background:selectedPhase===p.key?C.greenLight:C.alt,border:selectedPhase===p.key?`1.5px solid ${C.green}`:"1.5px solid transparent",cursor:"pointer",textAlign:"left"}}>
+                <span style={{width:12,height:12,borderRadius:"50%",background:p.color,flexShrink:0}}/>
+                <span style={{fontSize:13,fontWeight:600,color:selectedPhase===p.key?C.green:C.text}}>{p.label}</span>
+                {selectedPhase===p.key&&<span style={{marginLeft:"auto",fontSize:12,color:C.green}}>✓</span>}
+              </button>
+            ))}
+          </div>
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.muted,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Note (optionnel)</div>
+            <textarea value={noteInput} onChange={e=>setNoteInput(e.target.value)} rows={2} className="inp" style={{resize:"none",fontSize:13}} placeholder="Ex: Coupure active, natation légère..."/>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={clearPhase} className="btn-ghost" style={{flex:1,fontSize:12}}>Effacer</button>
+            <button onClick={()=>{setSelected([]);setEditMode(false);setNoteInput("");setSelectedPhase(null);}} className="btn-ghost" style={{flex:1,fontSize:12}}>Annuler</button>
+            <button onClick={()=>selectedPhase&&applyPhase(selectedPhase)} className="btn-primary" style={{flex:1,fontSize:12,padding:"10px",opacity:selectedPhase?1:.4}}>Appliquer</button>
+          </div>
+        </div>
+      )}
+
+      {/* Bouton ajouter AVANT */}
       {displayMois.length>0&&moisList.indexOf(displayMois[0])>0&&(
         <button onClick={()=>addMois("avant")} style={{width:"100%",padding:"7px",border:`1px dashed ${C.border}`,borderRadius:10,background:"transparent",color:C.light,fontSize:11,fontWeight:600,cursor:"pointer",marginBottom:10}}>
           + {moisList[moisList.indexOf(displayMois[0])-1]}
@@ -1389,29 +1415,6 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
         <button onClick={()=>addMois("apres")} style={{width:"100%",padding:"7px",border:`1px dashed ${C.border}`,borderRadius:10,background:"transparent",color:C.light,fontSize:11,fontWeight:600,cursor:"pointer",marginTop:4,marginBottom:12}}>
           + {moisList[moisList.indexOf(displayMois[displayMois.length-1])+1]}
         </button>
-      )}
-
-      {/* Palette édition */}
-      {editMode&&selected.length>0&&(
-        <div style={{position:"sticky",bottom:90,zIndex:100,background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:14,boxShadow:"0 4px 24px rgba(0,0,0,0.12)"}}>
-          <div style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:.5,textTransform:"uppercase",marginBottom:10}}>{selected.length} semaine{selected.length>1?"s":""} sélectionnée{selected.length>1?"s":""}</div>
-          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-            {PHASES.map(p=>(
-              <button key={p.key} onClick={()=>applyPhase(p.key)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:10,background:C.alt,border:"none",cursor:"pointer",textAlign:"left"}}>
-                <span style={{width:12,height:12,borderRadius:"50%",background:p.color,flexShrink:0}}/>
-                <span style={{fontSize:13,fontWeight:600,color:C.text}}>{p.label}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{marginBottom:8}}>
-            <div style={{fontSize:10,fontWeight:700,color:C.muted,marginBottom:4,textTransform:"uppercase",letterSpacing:.5}}>Note (optionnel)</div>
-            <textarea value={noteInput} onChange={e=>setNoteInput(e.target.value)} rows={2} className="inp" style={{resize:"none",fontSize:13}} placeholder="Ex: Coupure active, natation légère..."/>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={clearPhase} className="btn-ghost" style={{flex:1,fontSize:12}}>Effacer</button>
-            <button onClick={()=>{setSelected([]);setEditMode(false);setNoteInput("");}} className="btn-ghost" style={{flex:1,fontSize:12}}>Annuler</button>
-          </div>
-        </div>
       )}
 
       {/* Objectif rappel */}
@@ -2191,4 +2194,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10c
+//v10e
