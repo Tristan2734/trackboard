@@ -737,8 +737,8 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
       })}
       <div style={{padding:"8px 16px 24px"}}>
         <button onClick={onAdd} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.border}`,background:"transparent",color:C.muted,fontSize:14,fontWeight:700,cursor:"pointer"}}>+ Nouvelle séance</button>
-      </>)}
       </div>
+      </>)}
     </div>
   );
 }
@@ -2500,4 +2500,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10l
+//v10m
