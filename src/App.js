@@ -1666,6 +1666,48 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
   );
 }
 
+function WeekBlock({wk,items,user,notifs,onSelSeance,onShowLog}) {
+  const [open,setOpen]=useState(true); // ouvert par défaut pour la semaine la plus récente
+  const sorted=items.sort((a,b)=>(a.s.dateISO||"")>(b.s.dateISO||"")? 1:-1);
+  const nbBilans=sorted.filter(({log})=>log).length;
+  const nbManquants=sorted.filter(({s})=>notifs[`${user.id}_${s.id}`]).length;
+
+  return (
+    <div style={{marginBottom:10}}>
+      {/* Header semaine cliquable */}
+      <div onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",borderRadius:10,background:C.greenLight,cursor:"pointer",marginBottom:open?6:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:11,fontWeight:700,color:C.green,letterSpacing:.5}}>{wk}</span>
+          <span style={{fontSize:10,color:C.greenMid,fontWeight:300}}>{sorted.length} séance{sorted.length>1?"s":""}</span>
+          {nbBilans>0&&<span style={{fontSize:9,background:C.green,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700}}>{nbBilans} bilan{nbBilans>1?"s":""}</span>}
+          {nbManquants>0&&<span style={{fontSize:9,background:C.danger,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700}}>!{nbManquants}</span>}
+        </div>
+        <i className={`ti ${open?"ti-chevron-up":"ti-chevron-down"}`} style={{fontSize:13,color:C.green}} aria-hidden="true"/>
+      </div>
+
+      {/* Liste des séances */}
+      {open&&sorted.map(({s,log})=>{
+        const need=notifs[`${user.id}_${s.id}`];
+        const jourLabel=s.dateISO?new Date(s.dateISO+'T12:00:00').toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"short"}):JOURS[s.jour||0];
+        return (
+          <div key={s.id} onClick={()=>onSelSeance?onSelSeance(s):onShowLog({seance:s,athleteId:user.id})} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,background:need?C.dangerBg:C.surface,border:`1px solid ${need?C.dangerBorder:C.border}`,marginBottom:5,cursor:"pointer"}}>
+            <SeanceIcon type={s.type} size={30}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:700,textTransform:"capitalize"}}>{jourLabel} · {s.heureDebut}</div>
+              {(s.disciplines||[]).length>0
+                ?<div style={{display:"flex",gap:3,flexWrap:"wrap",marginTop:2}}>{(s.disciplines||[]).slice(0,4).map(d=><span key={d} style={{fontSize:9,fontWeight:600,padding:"1px 5px",borderRadius:5,background:C.alt,color:C.muted}}>{d}</span>)}</div>
+                :(s.contenu&&<div style={{fontSize:10,color:C.muted,fontWeight:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{s.contenu}</div>)
+              }
+              {log?<div style={{fontSize:11,color:C.green,fontWeight:500,marginTop:1}}>✓ Forme {log.forme}/10</div>:<div style={{fontSize:11,color:need?C.danger:C.light,fontWeight:need?600:300,marginTop:1}}>{need?"Bilan à remplir":"—"}</div>}
+            </div>
+            <i className="ti ti-chevron-right" style={{fontSize:14,color:C.light,flexShrink:0}} aria-hidden="true"/>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,isCoach,onSelSeance,athletesList}) {
   const viewerId=user.id;
   const mySeances=seancesList.filter(s=>(s.presences||{})[user.id]==="present");
@@ -1797,29 +1839,8 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
           <SeanceSearch mySeances={mySeances} logs={logs} userId={user.id} notifs={notifs} onShowLog={onShowLog}/>
           {byWeekSorted.length===0&&<p className="empty">Aucune séance cochée.</p>}
           {byWeekSorted.map(([wk,items])=>(
-        <div key={wk} style={{marginBottom:16}}>
-          <div style={{fontSize:11,fontWeight:700,color:C.green,letterSpacing:.5,marginBottom:6,padding:"4px 10px",background:C.greenLight,borderRadius:8,display:"inline-block"}}>{wk}</div>
-          {items.sort((a,b)=>(a.s.jour||0)-(b.s.jour||0)).map(({s,log})=>{
-            const need=notifs[`${user.id}_${s.id}`];
-            const jourLabel=s.dateISO?new Date(s.dateISO+'T12:00:00').toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"short"}):JOURS[s.jour||0];
-            return (
-              <div key={s.id} onClick={()=>onSelSeance?onSelSeance(s):onShowLog({seance:s,athleteId:user.id})} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:14,background:need?C.dangerBg:C.surface,border:`1px solid ${need?C.dangerBorder:C.border}`,marginBottom:6,cursor:"pointer"}}>
-                <SeanceIcon type={s.type} size={34}/>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:14,fontWeight:700,textTransform:"capitalize"}}>{jourLabel} · {s.heureDebut}</div>
-                  {/* Disciplines en priorité, contenu en fallback */}
-                  {(s.disciplines||[]).length>0
-                    ?<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:2}}>{(s.disciplines||[]).slice(0,4).map(d=><span key={d} style={{fontSize:10,fontWeight:600,padding:"2px 6px",borderRadius:6,background:C.alt,color:C.muted}}>{d}</span>)}</div>
-                    :(s.contenu&&<div style={{fontSize:11,color:C.muted,fontWeight:300,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{s.contenu}</div>)
-                  }
-                  {log?<div style={{fontSize:12,color:C.green,fontWeight:500,marginTop:2}}>✓ Bilan rempli · Forme {log.forme}/10</div>:<div style={{fontSize:12,color:need?C.danger:C.light,fontWeight:need?600:300,marginTop:2}}>{need?"Bilan à remplir":"—"}</div>}
-                </div>
-                <i className="ti ti-chevron-right" style={{fontSize:16,color:C.light,flexShrink:0}} aria-hidden="true"/>
-              </div>
-            );
-          })}
-        </div>
-      ))}
+            <WeekBlock key={wk} wk={wk} items={items} user={user} notifs={notifs} onSelSeance={onSelSeance} onShowLog={onShowLog}/>
+          ))}
         </>
       )}
     </div>
@@ -2522,4 +2543,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10n
+//v10o
