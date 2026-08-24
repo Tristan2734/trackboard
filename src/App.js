@@ -1685,7 +1685,7 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
 }
 
 function WeekBlock({wk,items,user,notifs,onSelSeance,onShowLog,isCurrentWeek}) {
-  const [open,setOpen]=useState(isCurrentWeek||false);
+  const [open,setOpen]=useState(false);
   const sorted=items.sort((a,b)=>(a.s.dateISO||"")>(b.s.dateISO||"")? 1:-1);
   const nbBilans=sorted.filter(({log})=>log).length;
   const nbManquants=sorted.filter(({s})=>notifs[`${user.id}_${s.id}`]).length;
@@ -2561,4 +2561,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10p
+//v10q
