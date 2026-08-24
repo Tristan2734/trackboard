@@ -299,7 +299,7 @@ export default function App() {
   const [showLog,setShowLog]=useState(null); const [showAddSeance,setShowAddSeance]=useState(false);
   const [showAddComp,setShowAddComp]=useState(false); const [showProfile,setShowProfile]=useState(false);
   const [showMsgJour,setShowMsgJour]=useState(false);
-  const [msgJour,setMsgJour]=useState(null);
+  const [msgs,setMsgs]=useState([]);
   const [weekOffset,setWeekOffset]=useState(0);
   const [meteo,setMeteo]=useState(null);
   const [filterGroupe,setFilterGroupe]=useState("all");
@@ -336,11 +336,12 @@ export default function App() {
       });
       setSeances(seancesObj);
     }),getLogs(setLogs),getComps(setComps),getCycles(setCycles)];
-    // Message du jour
-    const unMsg=onValue(ref(db,"msgJour"),s=>{
-      const msg=s.val();
-      setMsgJour(msg||null);
-      if(msg?.actif){setShowMsgJour(true);}
+    // Messages du jour (liste)
+    const unMsg=onValue(ref(db,"msgs"),s=>{
+      const data=s.val()||{};
+      const list=Object.entries(data).map(([id,m])=>({id,...m})).filter(m=>m.actif).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      setMsgs(list);
+      if(list.length>0){setShowMsgJour(true);}
     });
     return()=>{us.forEach(u=>u&&u());unMsg&&unMsg();};
   },[user]);
@@ -447,12 +448,10 @@ export default function App() {
           <button onClick={()=>setDarkMode(d=>!d)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <i className={`ti ${darkMode?"ti-sun":"ti-moon"}`} style={{fontSize:18,color:"#fff"}} aria-hidden="true"/>
           </button>
-          {msgJour?.actif&&(
-            <button onClick={()=>setShowMsgJour(true)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative"}}>
-              <i className="ti ti-message-circle" style={{fontSize:18,color:"#fff"}} aria-hidden="true"/>
-              <div style={{position:"absolute",top:4,right:4,width:8,height:8,borderRadius:"50%",background:"#FFD700",border:"2px solid #6BA8A4"}}/>
-            </button>
-          )}
+          <button onClick={()=>setShowMsgJour(true)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative"}}>
+            <i className="ti ti-speakerphone" style={{fontSize:18,color:"#fff"}} aria-hidden="true"/>
+            {msgs.length>0&&<div style={{position:"absolute",top:-4,right:-4,width:16,height:16,borderRadius:"50%",background:"#FFD700",border:"2px solid #6BA8A4",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:800,color:"#1A1816"}}>{msgs.length}</div>}
+          </button>
           <div onClick={()=>setShowProfile(true)} style={{cursor:"pointer"}}><Avatar nom={user.nom} prenom={user.prenom} photo={user.photo} size={36}/></div>
         </div>
       </div>
@@ -507,7 +506,7 @@ export default function App() {
       {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full noBackdropClose><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach} onSelSeance={s=>{setSelAthlete(null);setSelSeance(s);}} athletesList={athletesList}/></Modal>}
       {showAddComp&&<AddComp onClose={()=>setShowAddComp(false)} onAdd={data=>{addComp(data);setShowAddComp(false);}}/>}
       {showProfile&&<ProfileModal user={user} onClose={()=>setShowProfile(false)} onSave={data=>{const u={...user,...data};saveUser(user.id,u);localStorage.setItem("tb_user",JSON.stringify(u));setUser(u);setShowProfile(false);}} onLogout={logout}/>}
-      {showMsgJour&&<MsgJourModal msg={msgJour} isCoach={isCoach} onClose={()=>setShowMsgJour(false)} onSave={data=>{set(ref(db,"msgJour"),data);setShowMsgJour(false);}}/>}
+      {showMsgJour&&<MsgJourModal msgs={msgs} isCoach={isCoach} onClose={()=>setShowMsgJour(false)}/>}
       {showNotifs&&(
         <Modal onClose={()=>setShowNotifs(false)} title="Bilans à remplir">
           {isCoach?(
@@ -1355,7 +1354,7 @@ function DupliquerPlanifModal({planif,saison,userId,athletesList}) {
 }
 
 function PlanificationView({userId,isCoach,athletesList,user}) {
-  const [saison,setSaison]=useState("ete");
+  const [saison,setSaison]=useState("hiver");
   const [planif,setPlanif]=useState({});
   const [objectifs,setObjectifs]=useState({});
   const [selected,setSelected]=useState([]);
@@ -1431,16 +1430,6 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
           <button key={k} onClick={()=>{setSaison(k);setSelected([]);setEditMode(false);}} style={{flex:1,padding:"10px",borderRadius:12,border:`1.5px solid ${saison===k?C.green:C.border}`,background:saison===k?C.greenLight:C.surface,color:saison===k?C.green:C.muted,fontWeight:700,fontSize:13,cursor:"pointer"}}>
             {l}
           </button>
-        ))}
-      </div>
-
-      {/* Légende phases - compacte */}
-      <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:12}}>
-        {PHASES.map(p=>(
-          <span key={p.key} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:20,background:C.surface,border:`1px solid ${C.border}`,fontSize:9,fontWeight:600,color:C.muted}}>
-            <span style={{width:8,height:8,borderRadius:"50%",background:p.color,flexShrink:0,display:"inline-block"}}/>
-            {p.label}
-          </span>
         ))}
       </div>
 
@@ -2065,7 +2054,7 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
   }
 
   return (
-    <Modal onClose={onClose} title="Nouvelle séance" full>
+    <Modal onClose={onClose} title="Nouvelle séance" full noBackdropClose>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {/* Semaine */}
         <div>
@@ -2305,29 +2294,53 @@ function AddComp({onClose,onAdd}) {
   );
 }
 
-function MsgJourModal({msg,isCoach,onClose,onSave}) {
-  const [editMode,setEditMode]=useState(false);
-  const [texte,setTexte]=useState(msg?.texte||"");
-  const [actif,setActif]=useState(msg?.actif!==false);
+function MsgJourModal({msgs,isCoach,onClose}) {
+  const [addMode,setAddMode]=useState(false);
+  const [texte,setTexte]=useState("");
 
-  if(editMode&&isCoach) return (
-    <Modal onClose={()=>setEditMode(false)} title="Message du jour">
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
-        <Toggle label="Message actif" sub="Visible par tous les athlètes" value={actif} onChange={setActif}/>
-        <div><Lbl>Message</Lbl><textarea value={texte} onChange={e=>setTexte(e.target.value)} rows={5} className="inp" style={{resize:"none",lineHeight:1.6}} placeholder="Ex: Séance annulée ce soir, nouvelle séance demain matin 9h..."/></div>
-        <button className="btn-primary" onClick={()=>onSave({texte,actif,updatedAt:Date.now()})}>Publier</button>
-        <button className="btn-ghost" onClick={()=>onSave({texte,actif:false,updatedAt:Date.now()})}>Désactiver le message</button>
-      </div>
-    </Modal>
-  );
+  function addMsg(){
+    if(!texte.trim())return;
+    const newRef=ref(db,"msgs/"+Date.now());
+    set(newRef,{texte:texte.trim(),actif:true,createdAt:Date.now()});
+    setTexte("");setAddMode(false);
+  }
+
+  function deleteMsg(id){
+    set(ref(db,`msgs/${id}`),null);
+  }
 
   return (
-    <Modal onClose={onClose} title="Message du jour">
-      <div style={{padding:"16px",background:C.greenLight,borderRadius:12,marginBottom:16,border:`1px solid ${C.greenAccent}44`}}>
-        <div style={{fontSize:15,color:C.green,lineHeight:1.6,fontWeight:400}}>{msg?.texte||"Aucun message pour aujourd'hui."}</div>
-        {msg?.updatedAt&&<div style={{fontSize:10,color:C.muted,marginTop:8,fontWeight:300}}>Publié le {new Date(msg.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</div>}
-      </div>
-      {isCoach&&<button onClick={()=>setEditMode(true)} className="btn-ghost" style={{width:"100%"}}>Modifier le message</button>}
+    <Modal onClose={onClose} title="Messages">
+      {msgs.length===0&&!addMode&&<p className="empty">Aucun message pour le moment.</p>}
+      {msgs.map(m=>(
+        <div key={m.id} style={{padding:"12px 14px",borderRadius:12,background:C.greenLight,border:`1px solid ${C.greenAccent}44`,marginBottom:8,display:"flex",alignItems:"flex-start",gap:10}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:14,color:C.green,lineHeight:1.5,fontWeight:400}}>{m.texte}</div>
+            <div style={{fontSize:10,color:C.muted,marginTop:4}}>
+              {m.createdAt?new Date(m.createdAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"}):""}
+            </div>
+          </div>
+          {isCoach&&(
+            <button onClick={()=>deleteMsg(m.id)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,padding:"2px 6px"}}>✕</button>
+          )}
+        </div>
+      ))}
+
+      {isCoach&&(
+        addMode?(
+          <div style={{marginTop:8}}>
+            <textarea value={texte} onChange={e=>setTexte(e.target.value)} rows={3} className="inp" style={{resize:"none",marginBottom:8}} placeholder="Ex: Séance annulée ce soir, reprogrammée demain 9h..."/>
+            <div style={{display:"flex",gap:8}}>
+              <button className="btn-ghost" onClick={()=>{setAddMode(false);setTexte("");}} style={{flex:1}}>Annuler</button>
+              <button className="btn-primary" onClick={addMsg} style={{flex:1}}>Publier</button>
+            </div>
+          </div>
+        ):(
+          <button onClick={()=>setAddMode(true)} style={{width:"100%",marginTop:8,padding:"11px",borderRadius:12,border:`1.5px dashed ${C.border}`,background:"transparent",color:C.muted,cursor:"pointer",fontSize:13,fontWeight:600}}>
+            + Nouveau message
+          </button>
+        )
+      )}
     </Modal>
   );
 }
@@ -2386,4 +2399,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10i
+//v10j
