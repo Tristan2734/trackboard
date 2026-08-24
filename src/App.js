@@ -755,7 +755,15 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   const [groupeVal,setGroupeVal]=useState(seance.groupe||"");
   const [editHoraires,setEditHoraires]=useState(false);
   const [editLibreExos,setEditLibreExos]=useState(false);
-  const [libreExos,setLibreExos]=useState(seance.libreExos||[{nom:"",series:4,reps:8,notes:""}]);
+  const initExos=(()=>{
+    if(seance.libreExos?.length>0)return seance.libreExos;
+    if(cycle){
+      const cycleExosInit=(cycle.seances||[{exercices:cycle.exercices||[]}])[seance.seanceIdx||0]?.exercices||[];
+      if(cycleExosInit.length>0)return cycleExosInit.map(e=>({nom:e.nom,series:e.series||4,reps:e.reps||8,notes:e.notes||""}));
+    }
+    return [{nom:"",series:4,reps:8,notes:""}];
+  })();
+  const [libreExos,setLibreExos]=useState(initExos);
   function updLibreExo(i,f,v){setLibreExos(p=>p.map((e,j)=>j===i?{...e,[f]:v}:e));}
   function saveLibreExos(){onUpdate(seance.id,{libreExos:libreExos.filter(e=>e.nom)});setEditLibreExos(false);}
   const presents=athletesList.filter(a=>(seance.presences||{})[a.id]==="present");
@@ -842,18 +850,22 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
             </div>
           </div>
         ):(
-          <div onClick={()=>seance.type==="muscu"&&!seance.cycleId?setEditLibreExos(true):setEditContenu(true)} style={{padding:"10px 14px",borderRadius:10,background:C.alt,cursor:"pointer",border:`1px dashed ${C.border}`}}>
+          <div onClick={()=>seance.type==="muscu"?setEditLibreExos(true):setEditContenu(true)} style={{padding:"10px 14px",borderRadius:10,background:C.alt,cursor:"pointer",border:`1px dashed ${C.border}`}}>
             <div style={{fontSize:11,color:C.muted,marginBottom:4,fontWeight:600}}>
-              {seance.type==="muscu"&&!seance.cycleId?"EXERCICES · Tap pour modifier":"CONTENU · Tap pour modifier"}
+              {seance.type==="muscu"?"EXERCICES · Tap pour modifier":"CONTENU · Tap pour modifier"}
             </div>
-            {seance.type==="muscu"&&!seance.cycleId?(
+            {seance.type==="muscu"?(
               (seance.libreExos||[]).length>0
                 ?<div style={{display:"flex",flexDirection:"column",gap:3}}>
                   {(seance.libreExos||[]).map((e,i)=>(
                     <div key={i} style={{fontSize:13,color:C.text,fontWeight:400}}>{e.nom} <span style={{fontSize:11,color:C.muted}}>{e.series}×{e.reps}</span></div>
                   ))}
                 </div>
-                :<div style={{fontSize:14,color:C.light,fontWeight:300}}>Ajouter des exercices...</div>
+                :cycle
+                  ?(cycle.seances||[{exercices:cycle.exercices||[]}])[seance.seanceIdx||0]?.exercices?.map((e,i)=>(
+                    <div key={i} style={{fontSize:13,color:C.text,fontWeight:400}}>{e.nom} <span style={{fontSize:11,color:C.muted}}>{e.series}×{e.reps}</span></div>
+                  ))
+                  :<div style={{fontSize:14,color:C.light,fontWeight:300}}>Ajouter des exercices...</div>
             ):(
               <div style={{fontSize:14,color:contenu?C.text:C.light,fontWeight:300,lineHeight:1.5}}>{contenu||"Ajouter un contenu..."}</div>
             )}
@@ -875,8 +887,8 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
         </div>
       )}
 
-      {/* Exercices saisie libre - affichage + édition */}
-      {seance.type==="muscu"&&!seance.cycleId&&(
+      {/* Exercices muscu - saisie libre ET cycle */}
+      {seance.type==="muscu"&&(
         <div style={{marginBottom:14}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <Lbl style={{marginBottom:0}}>Exercices</Lbl>
@@ -886,14 +898,20 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
               </button>
             )}
           </div>
-          {!editLibreExos?(
-            (seance.libreExos||[]).length>0?(seance.libreExos||[]).map((e,i)=>(
-              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:8,background:C.alt,marginBottom:4}}>
-                <span style={{fontSize:13,fontWeight:600,color:C.text}}>{e.nom}</span>
-                <span style={{fontSize:11,color:C.muted}}>{e.series}×{e.reps}{e.notes?` · ${e.notes}`:""}</span>
-              </div>
-            )):<div style={{fontSize:12,color:C.light,fontStyle:"italic"}}>Aucun exercice défini</div>
-          ):(
+          {!editLibreExos?(()=>{
+            const displayExos=seance.libreExos?.length>0
+              ?seance.libreExos
+              :cycle?(cycle.seances||[{exercices:cycle.exercices||[]}])[seance.seanceIdx||0]?.exercices||[]
+              :[];
+            return displayExos.length>0
+              ?displayExos.map((e,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:8,background:C.alt,marginBottom:4}}>
+                  <span style={{fontSize:13,fontWeight:600,color:C.text}}>{e.nom}</span>
+                  <span style={{fontSize:11,color:C.muted}}>{e.series}×{e.reps}{e.notes?` · ${e.notes}`:""}</span>
+                </div>
+              ))
+              :<div style={{fontSize:12,color:C.light,fontStyle:"italic"}}>Aucun exercice défini</div>;
+          })():(
             <div>
               {libreExos.map((e,i)=>(
                 <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
@@ -1666,8 +1684,8 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
   );
 }
 
-function WeekBlock({wk,items,user,notifs,onSelSeance,onShowLog}) {
-  const [open,setOpen]=useState(true); // ouvert par défaut pour la semaine la plus récente
+function WeekBlock({wk,items,user,notifs,onSelSeance,onShowLog,isCurrentWeek}) {
+  const [open,setOpen]=useState(isCurrentWeek||false);
   const sorted=items.sort((a,b)=>(a.s.dateISO||"")>(b.s.dateISO||"")? 1:-1);
   const nbBilans=sorted.filter(({log})=>log).length;
   const nbManquants=sorted.filter(({s})=>notifs[`${user.id}_${s.id}`]).length;
@@ -1839,7 +1857,7 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
           <SeanceSearch mySeances={mySeances} logs={logs} userId={user.id} notifs={notifs} onShowLog={onShowLog}/>
           {byWeekSorted.length===0&&<p className="empty">Aucune séance cochée.</p>}
           {byWeekSorted.map(([wk,items])=>(
-            <WeekBlock key={wk} wk={wk} items={items} user={user} notifs={notifs} onSelSeance={onSelSeance} onShowLog={onShowLog}/>
+            <WeekBlock key={wk} wk={wk} items={items} user={user} notifs={notifs} onSelSeance={onSelSeance} onShowLog={onShowLog} isCurrentWeek={wk===byWeekSorted[byWeekSorted.length-1]?.[0]}/>
           ))}
         </>
       )}
@@ -2543,4 +2561,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10o
+//v10p
