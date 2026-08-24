@@ -95,6 +95,45 @@ function weekStart(offset = 0) {
   return d;
 }
 
+// Convertir une date ISO en weekOffset relatif à aujourd'hui
+function isoToWeekOffset(dateISO) {
+  if(!dateISO) return 0;
+  const d = new Date(dateISO);
+  d.setHours(0,0,0,0);
+  const today = new Date();
+  const todayMonday = new Date(today);
+  const todayDay = today.getDay()||7;
+  todayMonday.setDate(today.getDate()-todayDay+1);
+  todayMonday.setHours(0,0,0,0);
+  const seanceMonday = new Date(d);
+  const seanceDay = d.getDay()||7;
+  seanceMonday.setDate(d.getDate()-seanceDay+1);
+  seanceMonday.setHours(0,0,0,0);
+  return Math.round((seanceMonday-todayMonday)/(7*86400000));
+}
+
+// Obtenir la date ISO du lundi d'un weekOffset
+function weekStartISO(offset=0) {
+  const d = weekStart(offset);
+  return d.toISOString().slice(0,10);
+}
+
+// Obtenir la date ISO d'un jour dans une semaine
+function getDateISO(weekOffset, jourIndex) {
+  const ws = weekStart(weekOffset);
+  ws.setDate(ws.getDate() + jourIndex);
+  return ws.toISOString().slice(0,10);
+}
+
+// Obtenir le weekOffset et le jourIndex depuis une dateISO
+function parseDateISO(dateISO) {
+  if(!dateISO) return {weekOffset:0, jour:0};
+  const d = new Date(dateISO);
+  const jourIndex = (d.getDay()||7)-1; // 0=lundi...6=dimanche
+  const wo = isoToWeekOffset(dateISO);
+  return {weekOffset:wo, jour:jourIndex};
+}
+
 function weekLabel(date) {
   const fmt = x => x.toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
   const end = new Date(date); end.setDate(date.getDate()+6);
@@ -259,6 +298,8 @@ export default function App() {
   const [selSeance,setSelSeance]=useState(null); const [selAthlete,setSelAthlete]=useState(null);
   const [showLog,setShowLog]=useState(null); const [showAddSeance,setShowAddSeance]=useState(false);
   const [showAddComp,setShowAddComp]=useState(false); const [showProfile,setShowProfile]=useState(false);
+  const [showMsgJour,setShowMsgJour]=useState(false);
+  const [msgJour,setMsgJour]=useState(null);
   const [weekOffset,setWeekOffset]=useState(0);
   const [meteo,setMeteo]=useState(null);
   const [filterGroupe,setFilterGroupe]=useState("all");
@@ -281,7 +322,13 @@ export default function App() {
   useEffect(()=>{
     if(!user)return;
     const us=[getUsers(setUsers),getSeances(setSeances),getLogs(setLogs),getComps(setComps),getCycles(setCycles)];
-    return()=>us.forEach(u=>u&&u());
+    // Message du jour
+    const unMsg=onValue(ref(db,"msgJour"),s=>{
+      const msg=s.val();
+      setMsgJour(msg||null);
+      if(msg?.actif){setShowMsgJour(true);}
+    });
+    return()=>{us.forEach(u=>u&&u());unMsg&&unMsg();};
   },[user]);
 
   const handleLogin=(u,coach)=>{setUser(u);setIsCoach(coach);};
@@ -306,8 +353,9 @@ export default function App() {
 
   const now=new Date();
   const isSeancePast=(s)=>{
-    const ws=weekStart(s.weekOffset||0);
-    const d=new Date(ws);d.setDate(ws.getDate()+(s.jour||0));
+    let d;
+    if(s.dateISO){d=new Date(s.dateISO+'T12:00:00');}
+    else{const ws=weekStart(s.weekOffset||0);d=new Date(ws);d.setDate(ws.getDate()+(s.jour||0));}
     const [h,m]=(s.heureFin||"23:59").split(":").map(Number);
     d.setHours(h,m,0,0);
     return d<now;
@@ -335,12 +383,14 @@ export default function App() {
   const ws=weekStart(weekOffset);
   const seancesByJour=Array.from({length:7},(_,i)=>
     seancesList.filter(s=>{
-      if(s.jour!==i)return false;
-      if(s.weekOffset!==weekOffset)return false;
+      // Support ancien format (weekOffset+jour) ET nouveau format (dateISO)
+      let sJour,sWeekOffset;
+      if(s.dateISO){const p=parseDateISO(s.dateISO);sJour=p.jour;sWeekOffset=p.weekOffset;}
+      else{sJour=s.jour||0;sWeekOffset=s.weekOffset||0;}
+      if(sJour!==i)return false;
+      if(sWeekOffset!==weekOffset)return false;
       if(filterGroupe!=="all"){
-        // Si la séance n'a pas de groupe → visible seulement dans "Tous"
         if(!s.groupe||s.groupe==="")return false;
-        // Si la séance a un groupe → visible seulement si ça correspond
         if(s.groupe!==filterGroupe)return false;
       }
       if(filterMine&&!(s.presences||{})[user.id])return false;
@@ -383,7 +433,12 @@ export default function App() {
           <button onClick={()=>setDarkMode(d=>!d)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
             <i className={`ti ${darkMode?"ti-sun":"ti-moon"}`} style={{fontSize:18,color:"#fff"}} aria-hidden="true"/>
           </button>
-          {nbNotifs>0&&<div onClick={()=>setShowNotifs(true)} style={{background:"#C0392B",color:"#fff",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,cursor:"pointer",flexShrink:0}}>{nbNotifs}</div>}
+          {msgJour?.actif&&(
+            <button onClick={()=>setShowMsgJour(true)} style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:10,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",position:"relative"}}>
+              <i className="ti ti-message-circle" style={{fontSize:18,color:"#fff"}} aria-hidden="true"/>
+              <div style={{position:"absolute",top:4,right:4,width:8,height:8,borderRadius:"50%",background:"#FFD700",border:"2px solid #6BA8A4"}}/>
+            </button>
+          )}
           <div onClick={()=>setShowProfile(true)} style={{cursor:"pointer"}}><Avatar nom={user.nom} prenom={user.prenom} photo={user.photo} size={36}/></div>
         </div>
       </div>
@@ -435,9 +490,10 @@ export default function App() {
       {showDuplicate&&<DuplicateSeanceModal seance={showDuplicate} onClose={()=>setShowDuplicate(null)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id,presences:{[user.id]:"present"}});setShowDuplicate(null);}} cyclesList={cyclesList} currentWeekOffset={weekOffset}/>}
       {showLog&&<LogModal seance={showLog.seance} athleteId={showLog.athleteId} existing={logs[`${showLog.athleteId}_${showLog.seance.id}`]} cyclesList={cyclesList} onClose={()=>setShowLog(null)} onSave={data=>{saveLog(showLog.seance.id,showLog.athleteId,data);setShowLog(null);}}/>}
       {showAddSeance&&<AddSeance onClose={()=>setShowAddSeance(false)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowAddSeance(false);}} athletesList={athletesList} cyclesList={cyclesList} user={user} currentWeekOffset={weekOffset}/>}
-      {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach} onSelSeance={s=>{setSelAthlete(null);setSelSeance(s);}} athletesList={athletesList}/></Modal>}
+      {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full noBackdropClose><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach} onSelSeance={s=>{setSelAthlete(null);setSelSeance(s);}} athletesList={athletesList}/></Modal>}
       {showAddComp&&<AddComp onClose={()=>setShowAddComp(false)} onAdd={data=>{addComp(data);setShowAddComp(false);}}/>}
       {showProfile&&<ProfileModal user={user} onClose={()=>setShowProfile(false)} onSave={data=>{const u={...user,...data};saveUser(user.id,u);localStorage.setItem("tb_user",JSON.stringify(u));setUser(u);setShowProfile(false);}} onLogout={logout}/>}
+      {showMsgJour&&<MsgJourModal msg={msgJour} isCoach={isCoach} onClose={()=>setShowMsgJour(false)} onSave={data=>{set(ref(db,"msgJour"),data);setShowMsgJour(false);}}/>}
       {showNotifs&&(
         <Modal onClose={()=>setShowNotifs(false)} title="Bilans à remplir">
           {isCoach?(
@@ -1951,8 +2007,10 @@ function CycleDetail({cycle,athletesList,onClose,onUpdate}) {
 }
 
 function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset}) {
-  const [wo,setWo]=useState(currentWeekOffset);
-  const [jour,setJour]=useState(0);const [hD,setHD]=useState("10:00");const [hF,setHF]=useState("12:00");
+  // Utiliser une vraie date ISO au lieu de weekOffset+jour
+  const todayISO=new Date().toISOString().slice(0,10);
+  const [dateISO,setDateISO]=useState(todayISO);
+  const [hD,setHD]=useState("10:00");const [hF,setHF]=useState("12:00");
   const [type,setType]=useState("piste");const [groupe,setGroupe]=useState("");const [lieu,setLieu]=useState("");
   const [contenu,setContenu]=useState("");const [discs,setDiscs]=useState([]);
   const [selAthletes,setSelAthletes]=useState([]);const [mode,setMode]=useState("groupe");
@@ -1968,6 +2026,10 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
   function toggleAth(id){setSelAthletes(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);}
   function updLibreExo(i,f,v){setLibreExos(p=>p.map((e,j)=>j===i?{...e,[f]:v}:e));}
 
+  // Calculer jour et weekOffset depuis la date choisie (pour compatibilité)
+  const {weekOffset:wo, jour}=parseDateISO(dateISO);
+  const ws=weekStart(wo);
+
   const ws=weekStart(wo);
   const wsLabel=weekLabel(ws);
 
@@ -1977,7 +2039,8 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
     const cycleName=selCycle?.nom||"";
     const seanceName=cycleSeances[seanceIdx]?.nom||"";
     const libreExosData=type==="muscu"&&!cycleId?libreExos.filter(e=>e.nom):[];
-    onAdd({jour,heureDebut:hD,heureFin:hF,type,groupe:mode==="groupe"?groupe:"",athletes:mode==="athletes"?selAthletes:[],lieu,contenu,disciplines:discs,cycleId:type==="muscu"?cycleId:"",seanceIdx:type==="muscu"?seanceIdx:0,cycleName,seanceName,color,presences,libreExos:libreExosData},wo);
+    // Stocker dateISO pour fixer définitivement la séance dans sa date
+    onAdd({dateISO,jour,heureDebut:hD,heureFin:hF,type,groupe:mode==="groupe"?groupe:"",athletes:mode==="athletes"?selAthletes:[],lieu,contenu,disciplines:discs,cycleId:type==="muscu"?cycleId:"",seanceIdx:type==="muscu"?seanceIdx:0,cycleName,seanceName,color,presences,libreExos:libreExosData},wo);
   }
 
   return (
@@ -1985,19 +2048,10 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         {/* Semaine */}
         <div>
-          <Lbl>Semaine</Lbl>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <button onClick={()=>setWo(w=>w-1)} style={{background:C.alt,border:"none",borderRadius:8,width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <i className="ti ti-chevron-left" style={{fontSize:16,color:C.text}} aria-hidden="true"/>
-            </button>
-            <div style={{flex:1,textAlign:"center",fontSize:13,fontWeight:600,color:C.text}}>{wsLabel}</div>
-            <button onClick={()=>setWo(w=>w+1)} style={{background:C.alt,border:"none",borderRadius:8,width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <i className="ti ti-chevron-right" style={{fontSize:16,color:C.text}} aria-hidden="true"/>
-            </button>
-          </div>
+          <Lbl>Date de la séance</Lbl>
+          <input type="date" value={dateISO} onChange={e=>setDateISO(e.target.value)} className="inp" style={{fontSize:15}}/>
+          {dateISO&&<div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:4}}>{JOURS[jour]} · {new Date(dateISO+'T12:00:00').toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"})}</div>}
         </div>
-
-        <div><Lbl>Jour</Lbl><select value={jour} onChange={e=>setJour(+e.target.value)} className="inp">{JOURS.map((j,i)=><option key={i} value={i}>{j}</option>)}</select></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div><Lbl>Début</Lbl><input type="time" value={hD} onChange={e=>setHD(e.target.value)} className="inp"/></div>
           <div><Lbl>Fin</Lbl><input type="time" value={hF} onChange={e=>setHF(e.target.value)} className="inp"/></div>
@@ -2051,11 +2105,13 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
         {type==="muscu"&&(
           <div>
             <Lbl>Cycle muscu</Lbl>
-            <input className="inp" placeholder="Rechercher un cycle..." value={cycleSearch} onChange={e=>setCycleSearch(e.target.value)} style={{marginBottom:8}}/>
-            <div style={{maxHeight:160,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:10,marginBottom:cycleSeances.length>1?8:0}}>
-              <div onClick={()=>{setCycleId("");setSeanceIdx(0);}} style={{padding:"10px 14px",background:cycleId===""?C.greenLight:C.surface,cursor:"pointer",borderBottom:`1px solid ${C.border}`}}>
-                <span style={{fontSize:13,fontWeight:cycleId===""?700:400,color:cycleId===""?C.green:C.muted}}>Saisie libre</span>
-              </div>
+            {/* Saisie libre EN PREMIER */}
+            <div onClick={()=>{setCycleId("");setSeanceIdx(0);}} style={{padding:"10px 14px",borderRadius:10,background:cycleId===""?C.greenLight:C.alt,cursor:"pointer",marginBottom:8,border:`1.5px solid ${cycleId===""?C.green:C.border}`}}>
+              <span style={{fontSize:13,fontWeight:700,color:cycleId===""?C.green:C.muted}}>Saisie libre</span>
+              <div style={{fontSize:10,color:cycleId===""?C.green:C.light,fontWeight:300,marginTop:1}}>Créer les exercices directement</div>
+            </div>
+            <input className="inp" placeholder="Rechercher un cycle..." value={cycleSearch} onChange={e=>setCycleSearch(e.target.value)} style={{marginBottom:6}}/>
+            <div style={{maxHeight:140,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:10,marginBottom:cycleSeances.length>1?8:0}}>
               {filteredCycles.map(c=>(
                 <div key={c.id} onClick={()=>{setCycleId(c.id);setSeanceIdx(0);}} style={{padding:"10px 14px",background:cycleId===c.id?C.greenLight:C.surface,cursor:"pointer",borderBottom:`1px solid ${C.border}`}}>
                   <div style={{fontSize:13,fontWeight:cycleId===c.id?700:400,color:cycleId===c.id?C.green:C.text}}>{c.nom}</div>
@@ -2228,6 +2284,33 @@ function AddComp({onClose,onAdd}) {
   );
 }
 
+function MsgJourModal({msg,isCoach,onClose,onSave}) {
+  const [editMode,setEditMode]=useState(false);
+  const [texte,setTexte]=useState(msg?.texte||"");
+  const [actif,setActif]=useState(msg?.actif!==false);
+
+  if(editMode&&isCoach) return (
+    <Modal onClose={()=>setEditMode(false)} title="Message du jour">
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <Toggle label="Message actif" sub="Visible par tous les athlètes" value={actif} onChange={setActif}/>
+        <div><Lbl>Message</Lbl><textarea value={texte} onChange={e=>setTexte(e.target.value)} rows={5} className="inp" style={{resize:"none",lineHeight:1.6}} placeholder="Ex: Séance annulée ce soir, nouvelle séance demain matin 9h..."/></div>
+        <button className="btn-primary" onClick={()=>onSave({texte,actif,updatedAt:Date.now()})}>Publier</button>
+        <button className="btn-ghost" onClick={()=>onSave({texte,actif:false,updatedAt:Date.now()})}>Désactiver le message</button>
+      </div>
+    </Modal>
+  );
+
+  return (
+    <Modal onClose={onClose} title="Message du jour">
+      <div style={{padding:"16px",background:C.greenLight,borderRadius:12,marginBottom:16,border:`1px solid ${C.greenAccent}44`}}>
+        <div style={{fontSize:15,color:C.green,lineHeight:1.6,fontWeight:400}}>{msg?.texte||"Aucun message pour aujourd'hui."}</div>
+        {msg?.updatedAt&&<div style={{fontSize:10,color:C.muted,marginTop:8,fontWeight:300}}>Publié le {new Date(msg.updatedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</div>}
+      </div>
+      {isCoach&&<button onClick={()=>setEditMode(true)} className="btn-ghost" style={{width:"100%"}}>Modifier le message</button>}
+    </Modal>
+  );
+}
+
 function ProfileModal({user,onClose,onSave,onLogout}) {
   const [prenom,setPrenom]=useState(user.prenom||"");const [nom,setNom]=useState(user.nom||"");
   const [sexe,setSexe]=useState(user.sexe||"");const [groupe,setGroupe]=useState(user.groupe||"");
@@ -2282,4 +2365,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10f
+//v10g
