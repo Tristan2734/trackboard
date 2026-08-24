@@ -1253,8 +1253,8 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
   const annee=saison==="hiver"?"2026/2027":"2027";
   const planifSaison=planif[saison]||{};
 
-  // Mois présents dans la planif
-  const editedMois=moisList.filter(m=>planifSaison[m]&&Object.values(planifSaison[m]).some(s=>s?.phase));
+  // Mois présents dans la planif (même avec cases vides)
+  const editedMois=moisList.filter(m=>planifSaison[m]!==undefined);
   const displayMois=editedMois.length>0?editedMois:[];
 
   function getKey(mois,sem){return `${mois}_S${sem}`;}
@@ -2192,4 +2192,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10
+//v10b
