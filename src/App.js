@@ -87,52 +87,47 @@ const getNotes = (userId, cb) => onValue(ref(db, `notes/${userId}`), s => cb(s.v
 const saveNote = (userId, noteId, data) => set(ref(db, `notes/${userId}/${noteId}`), data);
 const addNote = (userId, data) => push(ref(db, `notes/${userId}`), data);
 
-function weekStart(offset = 0) {
-  const d = new Date();
-  const day = d.getDay() || 7;
-  d.setDate(d.getDate() - day + 1 + offset * 7);
-  d.setHours(0,0,0,0);
-  return d;
+// Lundi de la semaine contenant une date (semaine FR: lun→dim)
+function getMondayOf(d) {
+  const day = d.getDay(); // 0=dim, 1=lun...6=sam
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diff);
+  monday.setHours(0,0,0,0);
+  return monday;
 }
 
-// Convertir une date ISO en weekOffset relatif à aujourd'hui
+function weekStart(offset = 0) {
+  const monday = getMondayOf(new Date());
+  monday.setDate(monday.getDate() + offset * 7);
+  return monday;
+}
+
 function isoToWeekOffset(dateISO) {
   if(!dateISO) return 0;
   const d = new Date(dateISO + 'T12:00:00');
-  d.setHours(0,0,0,0);
-  const today = new Date();
-  const todayMonday = new Date(today);
-  const todayDay = today.getDay()||7;
-  todayMonday.setDate(today.getDate()-todayDay+1);
-  todayMonday.setHours(0,0,0,0);
-  const seanceMonday = new Date(d);
-  const seanceDay = d.getDay()||7;
-  seanceMonday.setDate(d.getDate()-seanceDay+1);
-  seanceMonday.setHours(0,0,0,0);
-  return Math.round((seanceMonday-todayMonday)/(7*86400000));
+  const dMonday = getMondayOf(d);
+  const todayMonday = getMondayOf(new Date());
+  return Math.round((dMonday - todayMonday) / (7 * 86400000));
 }
 
-// Obtenir la date ISO du lundi d'un weekOffset
 function weekStartISO(offset=0) {
-  const d = weekStart(offset);
-  return d.toISOString().slice(0,10);
+  return weekStart(offset).toISOString().slice(0,10);
 }
 
-// Obtenir la date ISO d'un jour dans une semaine
 function getDateISO(weekOffset, jourIndex) {
   const ws = weekStart(weekOffset);
   ws.setDate(ws.getDate() + jourIndex);
   return ws.toISOString().slice(0,10);
 }
 
-// Obtenir le weekOffset et le jourIndex depuis une dateISO
+// date ISO → {weekOffset, jour: 0=lun…6=dim}
 function parseDateISO(dateISO) {
   if(!dateISO) return {weekOffset:0, jour:0};
-  // Forcer midi local pour éviter le décalage UTC
   const d = new Date(dateISO + 'T12:00:00');
-  const jourIndex = (d.getDay()||7)-1; // 0=lundi...6=dimanche
-  const wo = isoToWeekOffset(dateISO);
-  return {weekOffset:wo, jour:jourIndex};
+  const day = d.getDay(); // 0=dim
+  const jourIndex = day === 0 ? 6 : day - 1; // lun=0…dim=6
+  return {weekOffset: isoToWeekOffset(dateISO), jour: jourIndex};
 }
 
 function weekLabel(date) {
@@ -302,6 +297,7 @@ export default function App() {
   const [showMsgJour,setShowMsgJour]=useState(false);
   const [msgs,setMsgs]=useState([]);
   const [weekOffset,setWeekOffset]=useState(0);
+  const [vueHorizontale,setVueHorizontale]=useState(false);
   const [meteo,setMeteo]=useState(null);
   const [filterGroupe,setFilterGroupe]=useState("all");
   const [filterMine,setFilterMine]=useState(false);
@@ -458,7 +454,7 @@ export default function App() {
       </div>
 
       <div className="fade view-enter">
-        {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} filterAthlete={filterAthlete} setFilterAthlete={setFilterAthlete} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)}/>}
+        {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} filterAthlete={filterAthlete} setFilterAthlete={setFilterAthlete} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)} vueHorizontale={vueHorizontale} setVueHorizontale={setVueHorizontale}/>}
         {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach}/>}
         {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach} onSelSeance={setSelSeance} athletesList={athletesList}/>}
         {view==="comps"&&<Comps comps={comps} athletesList={athletesList} isCoach={isCoach} user={user} onUpdateComp={updateComp} onDeleteComp={deleteComp} onAdd={()=>setShowAddComp(true)}/>}
@@ -501,7 +497,7 @@ export default function App() {
         setSelSeance(prev=>prev?{...prev,presences:{...(prev.presences||{}),...(localPresences[prev.id]||{}),[uid]:st}}:prev);
         setPresence(sid,uid,st);
       }} onShowLog={setShowLog} onDelete={id=>{deleteSeance(id);setSelSeance(null);}} onUpdate={handleUpdateSeance} onDuplicate={handleDuplicate}/>}
-      {showDuplicate&&<DuplicateSeanceModal seance={showDuplicate} onClose={()=>setShowDuplicate(null)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id,presences:{[user.id]:"present"}});setShowDuplicate(null);}} cyclesList={cyclesList} currentWeekOffset={weekOffset}/>}
+      {showDuplicate&&<DuplicateSeanceModal seance={showDuplicate} onClose={()=>setShowDuplicate(null)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowDuplicate(null);}} athletesList={athletesList} currentWeekOffset={weekOffset}/>}
       {showLog&&<LogModal seance={showLog.seance} athleteId={showLog.athleteId} existing={logs[`${showLog.athleteId}_${showLog.seance.id}`]} cyclesList={cyclesList} onClose={()=>setShowLog(null)} onSave={data=>{saveLog(showLog.seance.id,showLog.athleteId,data);setShowLog(null);}}/>}
       {showAddSeance&&<AddSeance onClose={()=>setShowAddSeance(false)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowAddSeance(false);}} athletesList={athletesList} cyclesList={cyclesList} user={user} currentWeekOffset={weekOffset}/>}
       {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full noBackdropClose><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach} onSelSeance={s=>{setSelAthlete(null);setSelSeance(s);}} athletesList={athletesList}/></Modal>}
@@ -582,7 +578,7 @@ export default function App() {
   );
 }
 
-function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd}) {
+function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd,vueHorizontale,setVueHorizontale}) {
   const touchStartX=useRef(null);
 
   function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;}
@@ -605,9 +601,14 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
             <div style={{fontSize:12,fontWeight:700,color:C.text}}>{weekLabel(ws)}</div>
             {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{fontSize:11,color:C.green,background:"none",border:"none",cursor:"pointer",fontWeight:600}}>← Aujourd'hui</button>}
           </div>
-          <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <i className="ti ti-chevron-right" style={{fontSize:18,color:C.text}} aria-hidden="true"/>
-          </button>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button onClick={()=>setVueHorizontale(v=>!v)} style={{background:vueHorizontale?C.greenLight:C.surface,border:`1px solid ${vueHorizontale?C.green:C.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <i className="ti ti-layout-columns" style={{fontSize:16,color:vueHorizontale?C.green:C.text}} aria-hidden="true"/>
+            </button>
+            <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <i className="ti ti-chevron-right" style={{fontSize:18,color:C.text}} aria-hidden="true"/>
+            </button>
+          </div>
         </div>
         {/* Filtres */}
         <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4}}>
@@ -630,7 +631,53 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
         </div>
       </div>
 
-      {seancesByJour.map((seances,i)=>{
+      {/* Vue horizontale heure par heure */}
+      {vueHorizontale?(
+        <div style={{overflowX:"auto",paddingBottom:8}}>
+          <div style={{minWidth:520,position:"relative"}}>
+            {/* Header jours */}
+            <div style={{display:"grid",gridTemplateColumns:"40px repeat(7,1fr)",gap:0,position:"sticky",top:0,background:C.bg,zIndex:10,borderBottom:`1px solid ${C.border}`}}>
+              <div/>
+              {JOURS.map((j,i)=>{
+                const dayDate=new Date(ws);dayDate.setDate(ws.getDate()+i);
+                const isToday=new Date().toDateString()===dayDate.toDateString();
+                return(
+                  <div key={i} style={{textAlign:"center",padding:"6px 2px",borderLeft:`1px solid ${C.border}`}}>
+                    <div style={{fontSize:9,fontWeight:700,color:isToday?C.green:C.muted,textTransform:"uppercase"}}>{j.slice(0,3)}</div>
+                    <div style={{fontSize:11,fontWeight:isToday?800:400,color:isToday?C.green:C.text}}>{dayDate.getDate()}</div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Grille heures 7h-22h */}
+            {Array.from({length:16},(_,h)=>h+7).map(hour=>(
+              <div key={hour} style={{display:"grid",gridTemplateColumns:"40px repeat(7,1fr)",borderTop:`1px solid ${C.border}`,minHeight:50}}>
+                <div style={{fontSize:9,color:C.light,padding:"4px 4px 0",textAlign:"right"}}>{hour}h</div>
+                {seancesByJour.map((seances,dayIdx)=>{
+                  const s=seances.find(s=>{
+                    const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
+                    return hStart===hour;
+                  });
+                  if(!s)return<div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`}}/>;
+                  const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
+                  const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
+                  const duration=Math.max(1,hEnd-hStart);
+                  const phase=PALETTE.find(p=>p.hex===s.color);
+                  return(
+                    <div key={dayIdx} onClick={()=>onSel(s)} style={{borderLeft:`1px solid ${C.border}`,padding:2,cursor:"pointer"}}>
+                      <div style={{borderRadius:6,padding:"3px 5px",background:phase?phase.rgba:C.greenLight,borderLeft:`3px solid ${phase?phase.hex:C.green}`,height:`${duration*50-6}px`,overflow:"hidden"}}>
+                        <div style={{fontSize:9,fontWeight:700,color:C.text,lineHeight:1.2}}>{s.heureDebut}–{s.heureFin}</div>
+                        {(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:8,color:C.muted}}>{d}</div>)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      ):(
+      <>{seancesByJour.map((seances,i)=>{
         const dayDate=new Date(ws); dayDate.setDate(ws.getDate()+i);
         const dateStr=dayDate.toLocaleDateString("fr-FR",{day:"numeric",month:"short"});
         const isToday=new Date().toDateString()===dayDate.toDateString();
@@ -653,7 +700,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
               const iPresent=myStatus==="present";
               const cs=s.color?colorStyle(s.color):{};
               const cardStyle=isCoachCard
-                ?{background:C.green,border:`1px solid ${C.green}`}
+                ?{background:C.greenMid,border:`1px solid ${C.greenMid}`}
                 :s.color
                   ?{...cs,border:"none",borderRadius:16,outline:iPresent?`2.5px solid #D4A017`:undefined,outlineOffset:iPresent?1:undefined}
                   :{background:C.surface,border:iPresent?`2px solid #D4A017`:`1px solid ${nbNL>0?C.dangerBorder:C.border}`};
@@ -690,6 +737,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
       })}
       <div style={{padding:"8px 16px 24px"}}>
         <button onClick={onAdd} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.border}`,background:"transparent",color:C.muted,fontSize:14,fontWeight:700,cursor:"pointer"}}>+ Nouvelle séance</button>
+      </>)}
       </div>
     </div>
   );
@@ -697,7 +745,6 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
 
 function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,onClose,onPresence,onShowLog,onDelete,onUpdate,onDuplicate}) {
   const myStatus=(seance.presences||{})[user.id];
-  const presents=athletesList.filter(a=>(seance.presences||{})[a.id]==="present");
   const cycle=seance.cycleId?cyclesList.find(c=>c.id===seance.cycleId):null;
   const [editContenu,setEditContenu]=useState(false);
   const [contenu,setContenu]=useState(seance.contenu||"");
@@ -706,6 +753,11 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   const [editGroupe,setEditGroupe]=useState(false);
   const [groupeVal,setGroupeVal]=useState(seance.groupe||"");
   const [editHoraires,setEditHoraires]=useState(false);
+  const [editLibreExos,setEditLibreExos]=useState(false);
+  const [libreExos,setLibreExos]=useState(seance.libreExos||[{nom:"",series:4,reps:8,notes:""}]);
+  function updLibreExo(i,f,v){setLibreExos(p=>p.map((e,j)=>j===i?{...e,[f]:v}:e));}
+  function saveLibreExos(){onUpdate(seance.id,{libreExos:libreExos.filter(e=>e.nom)});setEditLibreExos(false);}
+  const presents=athletesList.filter(a=>(seance.presences||{})[a.id]==="present");
   // Support dateISO et ancien format
   const initDateISO=seance.dateISO||(()=>{
     const ws=weekStart(seance.weekOffset||0);
@@ -810,6 +862,48 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
         </div>
       )}
 
+      {/* Exercices saisie libre - affichage + édition */}
+      {seance.type==="muscu"&&!seance.cycleId&&(
+        <div style={{marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+            <Lbl style={{marginBottom:0}}>Exercices</Lbl>
+            {(isCoach||seance.createdBy===user.id)&&(
+              <button onClick={()=>setEditLibreExos(!editLibreExos)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,color:C.muted,fontWeight:600}}>
+                {editLibreExos?"Fermer":"Modifier"}
+              </button>
+            )}
+          </div>
+          {!editLibreExos?(
+            (seance.libreExos||[]).length>0?(seance.libreExos||[]).map((e,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 10px",borderRadius:8,background:C.alt,marginBottom:4}}>
+                <span style={{fontSize:13,fontWeight:600,color:C.text}}>{e.nom}</span>
+                <span style={{fontSize:11,color:C.muted}}>{e.series}×{e.reps}{e.notes?` · ${e.notes}`:""}</span>
+              </div>
+            )):<div style={{fontSize:12,color:C.light,fontStyle:"italic"}}>Aucun exercice défini</div>
+          ):(
+            <div>
+              {libreExos.map((e,i)=>(
+                <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
+                  <div style={{display:"flex",gap:6,marginBottom:6}}>
+                    <input value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1}}/>
+                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                    {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
+                      <input key={f} value={e[f]||""} onChange={ev=>updLibreExo(i,f,ev.target.value)} placeholder={ph} className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div style={{display:"flex",gap:8,marginTop:4}}>
+                <button onClick={()=>setLibreExos(p=>[...p,{nom:"",series:4,reps:8,notes:""}])} style={{flex:1,padding:"8px",borderRadius:8,border:`1.5px dashed ${C.border}`,background:"transparent",color:C.muted,cursor:"pointer",fontSize:12,fontWeight:600}}>+ Exercice</button>
+                <button onClick={saveLibreExos} className="btn-primary" style={{flex:1,fontSize:12,padding:"8px"}}>Sauvegarder</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Présence */}
       <Lbl>Ma présence</Lbl>
       <div style={{marginBottom:14}}>
@@ -873,8 +967,10 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
   function toggleDisc(d){setMyDiscs(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d]);}
   function updExo(i,f,v){setExos(p=>p.map((e,j)=>j===i?{...e,[f]:v}:e));}
   function save(){
+    // Pour muscu: ajouter les noms d'exercices comme "disciplines" pour l'historique
+    const exoDiscs=seance.type==="muscu"?exos.filter(e=>e.nom).map(e=>e.nom):[];
     const data=seance.type==="muscu"
-      ?{type:"muscu",forme,difficulte,fatigue,notes,exos,myContenu,myDiscs}
+      ?{type:"muscu",forme,difficulte,fatigue,notes,exos,myContenu,myDiscs:exoDiscs.length>0?exoDiscs:myDiscs}
       :{type:seance.type,forme,difficulte,fatigue,notes,myContenu,myDiscs};
     onSave(data);
   }
@@ -1023,18 +1119,6 @@ function NoteModal({note,onClose,onSave}) {
 function SeanceSearch({mySeances,logs,userId,notifs,onShowLog}) {
   const [search,setSearch]=useState("");
   const [filterType,setFilterType]=useState("all");
-  const [filterDisc,setFilterDisc]=useState("");
-
-  if(!search&&filterType==="all"&&!filterDisc)return(
-    <div style={{marginBottom:8}}>
-      <div style={{display:"flex",gap:8,marginBottom:8}}>
-        <input className="inp" placeholder="Rechercher par discipline, date..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,fontSize:13,padding:"10px 12px"}}/>
-      </div>
-      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:8}}>
-        {["all","piste","muscu","autonomie"].map(t=><button key={t} onClick={()=>setFilterType(t)} className={`chip ${filterType===t?"chip-on":"chip-off"}`} style={{flexShrink:0,fontSize:11}}>{t==="all"?"Tout":t}</button>)}
-      </div>
-    </div>
-  );
 
   const results=mySeances.filter(s=>{
     if(filterType!=="all"&&s.type!==filterType)return false;
@@ -1042,8 +1126,10 @@ function SeanceSearch({mySeances,logs,userId,notifs,onShowLog}) {
       const q=search.toLowerCase();
       const inDisc=(s.disciplines||[]).some(d=>d.toLowerCase().includes(q));
       const inContenu=(s.contenu||"").toLowerCase().includes(q);
-      const inJour=JOURS[s.jour]?.toLowerCase().includes(q);
-      if(!inDisc&&!inContenu&&!inJour)return false;
+      const inJour=s.dateISO?new Date(s.dateISO+'T12:00:00').toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"}).toLowerCase().includes(q):JOURS[s.jour||0]?.toLowerCase().includes(q);
+      const inType=s.type?.toLowerCase().includes(q);
+      const inCycle=(s.cycleName||"").toLowerCase().includes(q);
+      if(!inDisc&&!inContenu&&!inJour&&!inType&&!inCycle)return false;
     }
     return true;
   });
@@ -1051,7 +1137,7 @@ function SeanceSearch({mySeances,logs,userId,notifs,onShowLog}) {
   return(
     <div style={{marginBottom:8}}>
       <div style={{display:"flex",gap:8,marginBottom:8}}>
-        <input className="inp" placeholder="Rechercher par discipline, date..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,fontSize:13,padding:"10px 12px"}}/>
+        <input className="inp" placeholder="Discipline, date, type..." value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1,fontSize:13,padding:"10px 12px"}}/>
         {search&&<button onClick={()=>setSearch("")} style={{background:C.alt,border:"none",borderRadius:10,padding:"0 12px",cursor:"pointer",fontSize:13,color:C.muted,fontWeight:600}}>✕</button>}
       </div>
       <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:8}}>
@@ -1478,24 +1564,20 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
         </div>
       )}
 
-      {/* Bouton ajouter AVANT */}
+      {/* Bouton ajouter AVANT - visible dès que le premier mois n'est pas le tout premier */}
       {displayMois.length>0&&moisList.indexOf(displayMois[0])>0&&(
         <button onClick={()=>addMois("avant")} style={{width:"100%",padding:"7px",border:`1px dashed ${C.border}`,borderRadius:10,background:"transparent",color:C.light,fontSize:11,fontWeight:600,cursor:"pointer",marginBottom:10}}>
           + {moisList[moisList.indexOf(displayMois[0])-1]}
         </button>
       )}
-
-      {/* Si aucun mois édité */}
       {displayMois.length===0&&(
-        <div style={{textAlign:"center",padding:"24px 0"}}>
-          <div style={{fontSize:13,color:C.light,marginBottom:12}}>Aucune planification pour cette saison</div>
-          <button onClick={()=>{
-            const first=moisList[0];
-            savePlanif(userId,{...planif,[saison]:{...planifSaison,_mois:[first]}});
-          }} style={{padding:"10px 20px",borderRadius:10,background:C.greenLight,border:`1.5px solid ${C.green}`,color:C.green,fontWeight:700,fontSize:13,cursor:"pointer"}}>
-            Commencer la planification
-          </button>
-        </div>
+        <button onClick={()=>{
+          // Premier mois de la liste = premier disponible
+          const first=moisList[0];
+          savePlanif(userId,{...planif,[saison]:{...planifSaison,_mois:[first]}});
+        }} style={{width:"100%",padding:"8px",border:`1px dashed ${C.border}`,borderRadius:10,background:"transparent",color:C.light,fontSize:11,fontWeight:600,cursor:"pointer",marginBottom:10}}>
+          + Commencer par {moisList[0]}
+        </button>
       )}
 
       {/* Mois */}
@@ -2240,42 +2322,55 @@ function AddCycle({athletesList,onClose,onAdd}) {
   );
 }
 
-function DuplicateSeanceModal({seance,onClose,onAdd,cyclesList,currentWeekOffset}) {
-  const [wo,setWo]=useState(currentWeekOffset);
-  const [jour,setJour]=useState(seance.jour??0);
+function DuplicateSeanceModal({seance,onClose,onAdd,athletesList,currentWeekOffset}) {
+  const todayISO=new Date().toISOString().slice(0,10);
+  const [dateISO,setDateISO]=useState(seance.dateISO||todayISO);
   const [hD,setHD]=useState(seance.heureDebut||"10:00");
   const [hF,setHF]=useState(seance.heureFin||"12:00");
   const [contenu,setContenu]=useState(seance.contenu||"");
   const [color,setColor]=useState(seance.color||"");
-  const ws=weekStart(wo);
+  const [groupe,setGroupe]=useState(seance.groupe||"");
+  const [mode,setMode]=useState(seance.athletes?.length>0?"athletes":"groupe");
+  const [selAthletes,setSelAthletes]=useState(seance.athletes||[]);
+  function toggleAth(id){setSelAthletes(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);}
+  const {weekOffset:wo,jour}=parseDateISO(dateISO);
 
   function submit(){
-    const {id,presences,...rest}=seance;
-    onAdd({...rest,jour,heureDebut:hD,heureFin:hF,contenu,color},wo);
+    const presences={};
+    if(mode==="athletes")selAthletes.forEach(id=>presences[id]="present");
+    const {id,presences:_,...rest}=seance;
+    onAdd({...rest,dateISO,jour,weekOffset:wo,heureDebut:hD,heureFin:hF,contenu,color,
+      groupe:mode==="groupe"?groupe:"",
+      athletes:mode==="athletes"?selAthletes:[],
+      presences},wo);
   }
 
   return (
-    <Modal onClose={onClose} title="Dupliquer la séance" full>
+    <Modal onClose={onClose} title="Dupliquer la séance" full noBackdropClose>
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div style={{padding:"10px 12px",borderRadius:10,background:C.greenLight,fontSize:12,color:C.green,fontWeight:600}}>
           Copie de : {seance.heureDebut}–{seance.heureFin} · {seance.type}
         </div>
         <div>
-          <Lbl>Semaine</Lbl>
-          <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <button onClick={()=>setWo(w=>w-1)} style={{background:C.alt,border:"none",borderRadius:8,width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <i className="ti ti-chevron-left" style={{fontSize:16,color:C.text}} aria-hidden="true"/>
-            </button>
-            <div style={{flex:1,textAlign:"center",fontSize:13,fontWeight:600,color:C.text}}>{weekLabel(ws)}</div>
-            <button onClick={()=>setWo(w=>w+1)} style={{background:C.alt,border:"none",borderRadius:8,width:34,height:34,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <i className="ti ti-chevron-right" style={{fontSize:16,color:C.text}} aria-hidden="true"/>
-            </button>
-          </div>
+          <Lbl>Date</Lbl>
+          <input type="date" value={dateISO} onChange={e=>setDateISO(e.target.value)} className="inp"/>
+          {dateISO&&<div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:4}}>{JOURS[jour]} · {new Date(dateISO+'T12:00:00').toLocaleDateString("fr-FR",{day:"numeric",month:"long"})}</div>}
         </div>
-        <div><Lbl>Jour</Lbl><select value={jour} onChange={e=>setJour(+e.target.value)} className="inp">{JOURS.map((j,i)=><option key={i} value={i}>{j}</option>)}</select></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div><Lbl>Début</Lbl><input type="time" value={hD} onChange={e=>setHD(e.target.value)} className="inp"/></div>
           <div><Lbl>Fin</Lbl><input type="time" value={hF} onChange={e=>setHF(e.target.value)} className="inp"/></div>
+        </div>
+        <div>
+          <Lbl>Pour qui</Lbl>
+          <div style={{display:"flex",gap:8,marginBottom:8}}>
+            {["groupe","athletes"].map(m=>(
+              <button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"8px",borderRadius:10,border:`1.5px solid ${mode===m?C.green:C.border}`,background:mode===m?C.greenLight:C.surface,color:mode===m?C.green:C.muted,fontWeight:700,cursor:"pointer",fontSize:12}}>
+                {m==="groupe"?"Groupe":"Athlètes"}
+              </button>
+            ))}
+          </div>
+          {mode==="groupe"&&<select value={groupe} onChange={e=>setGroupe(e.target.value)} className="inp"><option value="">Tous</option>{["Pôle","Club","Monstres"].map(g=><option key={g}>{g}</option>)}</select>}
+          {mode==="athletes"&&<div style={{display:"flex",flexWrap:"wrap",gap:6}}>{athletesList.filter(a=>a.role!=="coach").map(a=><button key={a.id} onClick={()=>toggleAth(a.id)} style={{padding:"5px 10px",borderRadius:8,border:`1.5px solid ${selAthletes.includes(a.id)?C.green:C.border}`,background:selAthletes.includes(a.id)?C.greenLight:C.surface,color:selAthletes.includes(a.id)?C.green:C.muted,fontSize:11,fontWeight:600,cursor:"pointer"}}>{a.prenom} {a.nom[0]}.</button>)}</div>}
         </div>
         <div><Lbl>Couleur</Lbl><PaletteRow selected={color} onChange={setColor}/></div>
         <div><Lbl>Contenu</Lbl><textarea value={contenu} onChange={e=>setContenu(e.target.value)} rows={3} className="inp" style={{resize:"none"}}/></div>
@@ -2405,4 +2500,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10k
+//v10l
