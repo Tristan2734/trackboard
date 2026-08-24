@@ -2029,8 +2029,6 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
   // Calculer jour et weekOffset depuis la date choisie (pour compatibilité)
   const {weekOffset:wo, jour}=parseDateISO(dateISO);
   const ws=weekStart(wo);
-
-  const ws=weekStart(wo);
   const wsLabel=weekLabel(ws);
 
   function submit(){
@@ -2365,4 +2363,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10g
+//v10h
