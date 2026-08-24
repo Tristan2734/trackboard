@@ -1254,8 +1254,7 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
   const planifSaison=planif[saison]||{};
 
   // Mois présents dans la planif (même avec cases vides)
-  const editedMois=moisList.filter(m=>planifSaison[m]!==undefined);
-  const displayMois=editedMois.length>0?editedMois:[];
+  const displayMois=planifSaison._mois||[];
 
   function getKey(mois,sem){return `${mois}_S${sem}`;}
 
@@ -1269,7 +1268,7 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
     selected.forEach(key=>{
       const [mois,semStr]=key.split("_");
       if(!updated[mois])updated[mois]={};
-      updated[mois][semStr]={...updated[mois][semStr],phase,note:noteInput||updated[mois]?.[semStr]?.note||""};
+      updated[mois][semStr]={phase,note:noteInput||updated[mois]?.[semStr]?.note||""};
     });
     savePlanif(userId,{...planif,[saison]:updated});
     setSelected([]);setEditMode(false);setNoteInput("");
@@ -1279,22 +1278,23 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
     const updated={...planifSaison};
     selected.forEach(key=>{
       const [mois,semStr]=key.split("_");
-      if(updated[mois])updated[mois][semStr]={};
+      if(updated[mois])delete updated[mois][semStr];
     });
     savePlanif(userId,{...planif,[saison]:updated});
     setSelected([]);setEditMode(false);
   }
 
   function addMois(pos){
-    // trouver le mois à ajouter
-    const currentIdx=moisList.indexOf(displayMois[0]);
-    const lastIdx=moisList.indexOf(displayMois[displayMois.length-1]);
+    const moisActifs=[...displayMois];
+    const currentIdx=moisList.indexOf(moisActifs[0]);
+    const lastIdx=moisList.indexOf(moisActifs[moisActifs.length-1]);
     let newMois;
     if(pos==="avant"&&currentIdx>0)newMois=moisList[currentIdx-1];
     else if(pos==="apres"&&lastIdx<moisList.length-1)newMois=moisList[lastIdx+1];
     if(!newMois)return;
-    const updated={...planifSaison,[newMois]:{"S1":{},"S2":{},"S3":{},"S4":{}}};
-    savePlanif(userId,{...planif,[saison]:updated});
+    if(pos==="avant")moisActifs.unshift(newMois);
+    else moisActifs.push(newMois);
+    savePlanif(userId,{...planif,[saison]:{...planifSaison,_mois:moisActifs}});
   }
 
   const objectifActuel=objectifs[saison==="hiver"?"hiver":"ete"];
@@ -1333,8 +1333,7 @@ function PlanificationView({userId,isCoach,athletesList,user}) {
           <div style={{fontSize:13,color:C.light,marginBottom:12}}>Aucune planification pour cette saison</div>
           <button onClick={()=>{
             const first=moisList[0];
-            const updated={...planifSaison,[first]:{"S1":{},"S2":{},"S3":{},"S4":{}}};
-            savePlanif(userId,{...planif,[saison]:updated});
+            savePlanif(userId,{...planif,[saison]:{...planifSaison,_mois:[first]}});
           }} style={{padding:"10px 20px",borderRadius:10,background:C.greenLight,border:`1.5px solid ${C.green}`,color:C.green,fontWeight:700,fontSize:13,cursor:"pointer"}}>
             Commencer la planification
           </button>
@@ -2192,4 +2191,4 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
     </Modal>
   );
 }
-//v10b
+//v10c
