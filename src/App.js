@@ -579,10 +579,6 @@ export default function App() {
 }
 
 function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd,vueHorizontale,setVueHorizontale}) {
-            {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{fontSize:11,color:C.green,background:"none",border:"none",cursor:"pointer",fontWeight:600}}>← Aujourd'hui</button>}
-          </div>
-          <div style={{display:"flex",gap:6,alignItems:"center"}}>
-            <button onClick={()=>setVueHorizontale(v=>!v)} style={{background:vueHorizontale?C.greenLight:C.surface,border:`1px solid ${vueHorizontale?C.green:C.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
               <i className="ti ti-layout-columns" style={{fontSize:16,color:vueHorizontale?C.green:C.text}} aria-hidden="true"/>
             </button>
             <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
