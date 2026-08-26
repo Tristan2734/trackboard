@@ -579,6 +579,20 @@ export default function App() {
 }
 
 function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd,vueHorizontale,setVueHorizontale}) {
+  return (
+    <div>
+      <div style={{padding:"12px 20px 8px"}}>
+        {/* Nav semaine */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+          <button onClick={()=>setWeekOffset(w=>w-1)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <i className="ti ti-chevron-left" style={{fontSize:18,color:C.text}} aria-hidden="true"/>
+          </button>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.text}}>{weekLabel(ws)}</div>
+            {weekOffset!==0&&<button onClick={()=>setWeekOffset(0)} style={{fontSize:11,color:C.green,background:"none",border:"none",cursor:"pointer",fontWeight:600}}>← Aujourd'hui</button>}
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <button onClick={()=>setVueHorizontale(v=>!v)} style={{background:vueHorizontale?C.greenLight:C.surface,border:`1px solid ${vueHorizontale?C.green:C.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
               <i className="ti ti-layout-columns" style={{fontSize:16,color:vueHorizontale?C.green:C.text}} aria-hidden="true"/>
             </button>
             <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:36,height:36,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
