@@ -579,18 +579,10 @@ export default function App() {
 }
 
 function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd,vueHorizontale,setVueHorizontale}) {
-  const touchStartX=useRef(null);
-
-  function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;}
-  function handleTouchEnd(e){
-    if(touchStartX.current===null)return;
-    const dx=e.changedTouches[0].clientX-touchStartX.current;
-    if(Math.abs(dx)>60){dx<0?setWeekOffset(w=>w+1):setWeekOffset(w=>w-1);}
-    touchStartX.current=null;
   }
 
   return (
-    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+    <div >
       <div style={{padding:"12px 20px 8px"}}>
         {/* Nav semaine */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
