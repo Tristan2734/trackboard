@@ -634,9 +634,9 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
       {/* Vue horizontale heure par heure */}
       {vueHorizontale?(
         <div style={{overflowX:"auto",paddingBottom:8}}>
-          <div style={{minWidth:520,position:"relative"}}>
+          <div style={{minWidth:600,position:"relative"}}>
             {/* Header jours */}
-            <div style={{display:"grid",gridTemplateColumns:"40px repeat(7,1fr)",gap:0,position:"sticky",top:0,background:C.bg,zIndex:10,borderBottom:`1px solid ${C.border}`}}>
+            <div style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",gap:0,position:"sticky",top:0,background:C.bg,zIndex:10,borderBottom:`1px solid ${C.border}`}}>
               <div/>
               {JOURS.map((j,i)=>{
                 const dayDate=new Date(ws);dayDate.setDate(ws.getDate()+i);
@@ -649,36 +649,48 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                 );
               })}
             </div>
-            {/* Grille heures 9h-20h */}
-            {Array.from({length:12},(_,h)=>h+9).map(hour=>(
-              <div key={hour} style={{display:"grid",gridTemplateColumns:"40px repeat(7,1fr)",borderTop:`1px solid ${C.border}`,minHeight:45}}>
-                <div style={{fontSize:9,color:C.light,padding:"4px 4px 0",textAlign:"right"}}>{hour}h</div>
-                {seancesByJour.map((seances,dayIdx)=>{
-                  const seancesAtHour=seances.filter(s=>{
-                    const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
-                    return hStart===hour;
-                  });
-                  if(seancesAtHour.length===0)return<div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`}}/>;
-                  return(
-                    <div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`,padding:2,display:"flex",flexDirection:"column",gap:1}}>
-                      {seancesAtHour.map((s,idx)=>{
-                        const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
-                        const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
-                        const duration=Math.max(1,hEnd-hStart);
-                        const phase=PALETTE.find(p=>p.hex===s.color);
-                        return(
-                          <div key={s.id} onClick={()=>onSel(s)} style={{borderRadius:5,padding:"2px 4px",background:phase?phase.rgba:C.greenLight,borderLeft:`2px solid ${phase?phase.hex:C.green}`,height:`${duration*45-4}px`,overflow:"hidden",cursor:"pointer",flex:1}}>
-                            <div style={{fontSize:8,fontWeight:700,color:C.text,lineHeight:1}}>{s.heureDebut}–{s.heureFin}</div>
-                            {(s.groupes&&s.groupes.length>0)?<div style={{fontSize:6,color:C.muted,fontWeight:600}}>{s.groupes.join(" / ")}</div>:(s.groupe?<div style={{fontSize:6,color:C.muted,fontWeight:600}}>{s.groupe}</div>:null)}
-                            {(s.disciplines||[]).slice(0,1).map(d=><div key={d} style={{fontSize:7,color:C.muted}}>{d}</div>)}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+            {/* Grille heures 9h-20h par plages de 2h */}
+            {Array.from({length:6},(_,i)=>i*2+9).map(hourStart=>{
+              const hourEnd=hourStart+2;
+              return(
+                <div key={hourStart} style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",borderTop:`1px solid ${C.border}`,minHeight:80,position:"relative"}}>
+                  <div style={{fontSize:9,color:C.light,padding:"4px 4px 0",textAlign:"right",borderRight:`1px solid ${C.border}`}}>
+                    <div>{hourStart}h</div>
+                    <div style={{fontSize:8,marginTop:2}}>{hourEnd}h</div>
+                  </div>
+                  {seancesByJour.map((seances,dayIdx)=>{
+                    const seancesInRange=seances.filter(s=>{
+                      const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
+                      const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
+                      return hStart>=hourStart&&hStart<hourEnd;
+                    }).sort((a,b)=>{
+                      const myStatusA=localPresences[a.id]?.[user.id]!==undefined?localPresences[a.id][user.id]:(a.presences||{})[user.id];
+                      const myStatusB=localPresences[b.id]?.[user.id]!==undefined?localPresences[b.id][user.id]:(b.presences||{})[user.id];
+                      return myStatusA==="present"?-1:myStatusB==="present"?1:0;
+                    });
+                    if(seancesInRange.length===0)return<div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`}}/>;
+                    return(
+                      <div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`,padding:2,display:"flex",gap:1}}>
+                        {seancesInRange.slice(0,2).map((s,idx)=>{
+                          const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
+                          const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
+                          const minStart=parseInt((s.heureDebut||"00:00").split(":")[1])||0;
+                          const offsetTop=(hStart-hourStart)*40+(minStart/60)*40;
+                          const height=(hEnd-hStart)*40+((parseInt((s.heureFin||"00:00").split(":")[1])||0)-minStart)/60*40;
+                          const phase=PALETTE.find(p=>p.hex===s.color);
+                          return(
+                            <div key={s.id} onClick={()=>onSel(s)} style={{position:"absolute",top:`${offsetTop}px`,height:`${Math.max(height-2,25)}px`,width:seancesInRange.length>1?"calc(50% - 1px)":"calc(100% - 4px)",left:seancesInRange.length>1?(idx===0?"2px":"calc(50% + 1px)"):"2px",borderRadius:4,padding:"2px 3px",background:phase?phase.rgba:C.greenLight,borderLeft:`2px solid ${phase?phase.hex:C.green}`,overflow:"hidden",cursor:"pointer",boxSizing:"border-box"}}>
+                              {(s.groupes&&s.groupes.length>0)?<div style={{fontSize:6,color:C.muted,fontWeight:700}}>{s.groupes.join(" / ")}</div>:(s.groupe?<div style={{fontSize:6,color:C.muted,fontWeight:700}}>{s.groupe}</div>:null)}
+                              {(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:6,color:C.muted,lineHeight:1}}>{d}</div>)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         </div>
       ):(
