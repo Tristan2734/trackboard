@@ -667,7 +667,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                     <div key={dayIdx} onClick={()=>onSel(s)} style={{borderLeft:`1px solid ${C.border}`,padding:2,cursor:"pointer"}}>
                       <div style={{borderRadius:6,padding:"3px 5px",background:phase?phase.rgba:C.greenLight,borderLeft:`3px solid ${phase?phase.hex:C.green}`,height:`${duration*50-6}px`,overflow:"hidden"}}>
                         <div style={{fontSize:9,fontWeight:700,color:C.text,lineHeight:1.2}}>{s.heureDebut}–{s.heureFin}</div>
-                        {(s.groupes&&s.groupes.length>0)?<div style={{fontSize:7,color:C.muted,fontWeight:600}}>{s.groupes.join(" / ")}</div>:s.groupe&&<div style={{fontSize:7,color:C.muted,fontWeight:600}}>{s.groupe}</div>:null}
+                        {(s.groupes&&s.groupes.length>0)?<div style={{fontSize:7,color:C.muted,fontWeight:600}}>{s.groupes.join(" / ")}</div>:(s.groupe?<div style={{fontSize:7,color:C.muted,fontWeight:600}}>{s.groupe}</div>:null)}
                         {s.type==="muscu"&&<div style={{fontSize:8,color:C.muted}}>◆ {s.cycleName||"Muscu"}</div>}
                         {(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:8,color:C.muted}}>{d}</div>)}
                       </div>
