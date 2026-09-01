@@ -666,9 +666,9 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                           const left=seancesInSlot.length>=2?(idx===0?"2px":"calc(50% + 1px)"):"2px";
                           return(
                             <div key={s.id} onClick={()=>onSel(s)} style={{position:"absolute",top:`${offsetPercent}%`,left,width,height:`${heightPercent}%`,minHeight:35,borderRadius:4,padding:"3px 4px",background:phase?phase.rgba:C.greenLight,borderLeft:`2.5px solid ${phase?phase.hex:C.green}`,overflow:"hidden",cursor:"pointer",boxSizing:"border-box",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
-                              {(s.groupes&&s.groupes.length>0)?(
+                              {(s.groupes&&s.groupes.length>0)||s.groupe?(
                                 <>
-                                  <div style={{fontSize:8,fontWeight:700,color:C.muted}}>{s.groupes.join(" / ")}</div>
+                                  <div style={{fontSize:8,fontWeight:700,color:C.muted}}>{s.groupes?.length>0?s.groupes.join(" / "):s.groupe}</div>
                                   <div style={{display:"flex",flexWrap:"wrap",gap:1}}>{(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:6,color:C.muted}}>{d}</div>)}</div>
                                 </>
                               ):(
