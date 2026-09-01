@@ -750,8 +750,10 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   const [contenu,setContenu]=useState(seance.contenu||"");
   const [editColor,setEditColor]=useState(false);
   const [color,setColor]=useState(seance.color||"");
-  const [editGroupe,setEditGroupe]=useState(false);
-  const [groupeVal,setGroupeVal]=useState(seance.groupe||"");
+  const [editGroupes,setEditGroupes]=useState(false);
+  const [groupesVal,setGroupesVal]=useState(seance.groupes||[]);
+  const [editDiscs,setEditDiscs]=useState(false);
+  const [discsVal,setDiscsVal]=useState(seance.disciplines||[]);
   const [editHoraires,setEditHoraires]=useState(false);
   const [editLibreExos,setEditLibreExos]=useState(false);
   const initExos=(()=>{
@@ -783,7 +785,10 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
     onUpdate(seance.id,{dateISO,jour,weekOffset:wo,heureDebut:hD,heureFin:hF});
     setEditHoraires(false);
   }
-  function saveGroupe(g){setGroupeVal(g);onUpdate(seance.id,{groupe:g});setEditGroupe(false);}
+  function toggleGroupe(g){setGroupesVal(p=>p.includes(g)?p.filter(x=>x!==g):[...p,g]);}
+  function toggleDisc(d){setDiscsVal(p=>p.includes(d)?p.filter(x=>x!==d):[...p,d]);}
+  function saveGroupes(){onUpdate(seance.id,{groupes:groupesVal});setEditGroupes(false);}
+  function saveDiscs(){onUpdate(seance.id,{disciplines:discsVal});setEditDiscs(false);}
 
   return (
     <Modal onClose={onClose} title={`${seance.heureDebut} – ${seance.heureFin}`}>
@@ -791,15 +796,17 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
       <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
         <SeanceIcon type={seance.type} size={32}/>
         <span style={{fontSize:14,fontWeight:700,color:C.text,textTransform:"capitalize"}}>{seance.type}</span>
-        {/* Groupe éditable */}
+        {/* Groupes éditable */}
         <div style={{position:"relative"}}>
-          <button onClick={()=>setEditGroupe(!editGroupe)} style={{background:groupeVal?C.greenLight:C.alt,border:`1px solid ${groupeVal?C.green:C.border}`,borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,color:groupeVal?C.green:C.muted,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
-            {groupeVal||"Groupe"} <i className="ti ti-pencil" style={{fontSize:10}} aria-hidden="true"/>
+          <button onClick={()=>setEditGroupes(!editGroupes)} style={{background:groupesVal.length>0?C.greenLight:C.alt,border:`1px solid ${groupesVal.length>0?C.green:C.border}`,borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,color:groupesVal.length>0?C.green:C.muted,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+            {groupesVal.length>0?groupesVal.join(", "):"Groupes"} <i className="ti ti-pencil" style={{fontSize:10}} aria-hidden="true"/>
           </button>
-          {editGroupe&&(
-            <div style={{position:"absolute",top:"100%",left:0,zIndex:10,background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,padding:8,display:"flex",flexDirection:"column",gap:4,minWidth:130,boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
-              <button onClick={()=>saveGroupe("")} style={{padding:"6px 10px",borderRadius:6,border:"none",background:!groupeVal?C.greenLight:"transparent",color:!groupeVal?C.green:C.muted,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left"}}>Aucun groupe</button>
-              {GROUPES.map(g=><button key={g} onClick={()=>saveGroupe(g)} style={{padding:"6px 10px",borderRadius:6,border:"none",background:groupeVal===g?C.greenLight:"transparent",color:groupeVal===g?C.green:C.muted,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left"}}>{g}</button>)}
+          {editGroupes&&(
+            <div style={{position:"absolute",top:"100%",left:0,zIndex:10,background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,padding:12,display:"flex",flexDirection:"column",gap:8,minWidth:160,boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+              {GROUPES.map(g=>(
+                <button key={g} onClick={()=>toggleGroupe(g)} style={{padding:"8px 12px",borderRadius:8,border:groupesVal.includes(g)?`1.5px solid ${C.green}`:`1px solid ${C.border}`,background:groupesVal.includes(g)?C.greenLight:C.surface,color:groupesVal.includes(g)?C.green:C.muted,fontSize:12,fontWeight:600,cursor:"pointer",textAlign:"left"}}>{groupesVal.includes(g)?"✓ ":""}{g}</button>
+              ))}
+              <button onClick={saveGroupes} style={{padding:"8px 12px",borderRadius:8,background:C.green,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",border:"none"}}>Valider</button>
             </div>
           )}
         </div>
@@ -872,12 +879,25 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
         )}
       </div>
 
-      {(seance.disciplines||[]).length>0&&(
-        <div style={{marginBottom:14}}>
+      <div style={{marginBottom:14}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
           <Lbl>Disciplines</Lbl>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>{(seance.disciplines||[]).map(d=><span key={d} className="disc disc-on">{d}</span>)}</div>
+          <button onClick={()=>setEditDiscs(!editDiscs)} style={{background:"none",border:"none",fontSize:11,color:C.green,fontWeight:700,cursor:"pointer"}}>
+            {editDiscs?"Valider":"Modifier"}
+          </button>
         </div>
-      )}
+        {editDiscs?(
+          <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+            {DISCIPLINES.map(d=>(
+              <button key={d} onClick={()=>toggleDisc(d)} className={`disc ${discsVal.includes(d)?"disc-on":"disc-off"}`} style={{fontSize:11}}>{d}</button>
+            ))}
+          </div>
+        ):(
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {(discsVal||[]).length>0?discsVal.map(d=><span key={d} className="disc disc-on">{d}</span>):<span style={{fontSize:11,color:C.muted}}>Aucune discipline</span>}
+          </div>
+        )}
+      </div>
 
       {cycle&&(
         <div style={{marginBottom:14,padding:"10px 12px",borderRadius:10,background:C.greenLight}}>
