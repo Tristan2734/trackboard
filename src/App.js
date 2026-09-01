@@ -667,6 +667,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                     <div key={dayIdx} onClick={()=>onSel(s)} style={{borderLeft:`1px solid ${C.border}`,padding:2,cursor:"pointer"}}>
                       <div style={{borderRadius:6,padding:"3px 5px",background:phase?phase.rgba:C.greenLight,borderLeft:`3px solid ${phase?phase.hex:C.green}`,height:`${duration*50-6}px`,overflow:"hidden"}}>
                         <div style={{fontSize:9,fontWeight:700,color:C.text,lineHeight:1.2}}>{s.heureDebut}–{s.heureFin}</div>
+                        {(s.groupes&&s.groupes.length>0)?<div style={{fontSize:7,color:C.muted,fontWeight:600}}>{s.groupes.join(" / ")}</div>:s.groupe&&<div style={{fontSize:7,color:C.muted,fontWeight:600}}>{s.groupe}</div>:null}
                         {s.type==="muscu"&&<div style={{fontSize:8,color:C.muted}}>◆ {s.cycleName||"Muscu"}</div>}
                         {(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:8,color:C.muted}}>{d}</div>)}
                       </div>
@@ -700,10 +701,10 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
               const isCoachCard=coaches.length>0;
               const iPresent=myStatus==="present";
               const cs=s.color?colorStyle(s.color):{};
-              const cardStyle=isCoachCard
-                ?{background:C.greenMid,border:`1px solid ${C.greenMid}`}
-                :s.color
-                  ?{...cs,border:"none",borderRadius:16,outline:iPresent?`2.5px solid #D4A017`:undefined,outlineOffset:iPresent?1:undefined}
+              const cardStyle=s.color
+                ?{...cs,border:"none",borderRadius:16,outline:iPresent?`2.5px solid #D4A017`:undefined,outlineOffset:iPresent?1:undefined}
+                :isCoachCard
+                  ?{background:C.greenMid,border:`1px solid ${C.greenMid}`}
                   :{background:C.surface,border:iPresent?`2px solid #D4A017`:`1px solid ${nbNL>0?C.dangerBorder:C.border}`};
               return (
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
@@ -714,7 +715,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}>
                         <span style={{fontSize:15,fontWeight:800,color:isCoachCard?"#fff":C.text}}>{s.heureDebut}–{s.heureFin}</span>
-                        {s.groupe&&<span className="tag" style={{background:isCoachCard?"rgba(255,255,255,0.15)":C.alt,color:isCoachCard?"rgba(255,255,255,0.7)":C.muted}}>{s.groupe}</span>}
+                        {(s.groupes&&s.groupes.length>0)?s.groupes.map(g=><span key={g} className="tag" style={{background:isCoachCard?"rgba(255,255,255,0.15)":C.alt,color:isCoachCard?"rgba(255,255,255,0.7)":C.muted}}>{g}</span>):s.groupe&&<span className="tag" style={{background:isCoachCard?"rgba(255,255,255,0.15)":C.alt,color:isCoachCard?"rgba(255,255,255,0.7)":C.muted}}>{s.groupe}</span>}
                       </div>
                       {(s.disciplines||[]).length>0?(
                         <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
