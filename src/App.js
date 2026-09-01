@@ -626,7 +626,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
         <div style={{overflowX:"auto",paddingBottom:8}}>
           <div style={{minWidth:640,position:"relative"}}>
             {/* Header jours */}
-            <div style={{display:"grid",gridTemplateColumns:"50px repeat(7,1fr)",gap:0,position:"sticky",top:0,background:C.bg,zIndex:10,borderBottom:`1px solid ${C.border}`}}>
+            <div style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",gap:0,position:"sticky",top:0,background:C.bg,zIndex:10,borderBottom:`1px solid ${C.border}`}}>
               <div/>
               {JOURS.map((j,i)=>{
                 const dayDate=new Date(ws);dayDate.setDate(ws.getDate()+i);
@@ -639,12 +639,12 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                 );
               })}
             </div>
-            {/* Grille 2h */}
-            {Array.from({length:6},(_,i)=>i*2+9).map(hourStart=>{
+            {/* Grille 2h: 10-12, 12-14, 14-16, 16-18, 18-20 */}
+            {[10,12,14,16,18].map(hourStart=>{
               const hourEnd=hourStart+2;
               return(
-                <div key={hourStart} style={{display:"grid",gridTemplateColumns:"50px repeat(7,1fr)",borderTop:`1px solid ${C.border}`,minHeight:90}}>
-                  <div style={{fontSize:9,color:C.light,padding:"4px 4px",textAlign:"right",borderRight:`1px solid ${C.border}`,fontSize:10}}>
+                <div key={hourStart} style={{display:"grid",gridTemplateColumns:"60px repeat(7,1fr)",borderTop:`1px solid ${C.border}`,minHeight:100}}>
+                  <div style={{fontSize:9,color:C.light,padding:"4px 4px",textAlign:"right",borderRight:`1px solid ${C.border}`,fontWeight:600}}>
                     {hourStart}–{hourEnd}h
                   </div>
                   {seancesByJour.map((seances,dayIdx)=>{
@@ -654,13 +654,29 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                     });
                     if(seancesInSlot.length===0)return<div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`}}/>;
                     return(
-                      <div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`,padding:2,display:"flex",flexDirection:"column",gap:1}}>
-                        {seancesInSlot.slice(0,2).map(s=>{
+                      <div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`,padding:2,position:"relative",minHeight:100}}>
+                        {seancesInSlot.map((s,idx)=>{
+                          const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
+                          const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
+                          const offsetPercent=((hStart-hourStart)/2)*100;
+                          const heightPercent=((hEnd-hStart)/2)*100;
                           const phase=PALETTE.find(p=>p.hex===s.color);
+                          const creator=athletesList.find(a=>a.id===s.createdBy);
+                          const width=seancesInSlot.length>=2?"calc(50% - 1px)":"calc(100% - 4px)";
+                          const left=seancesInSlot.length>=2?(idx===0?"2px":"calc(50% + 1px)"):"2px";
                           return(
-                            <div key={s.id} onClick={()=>onSel(s)} style={{borderRadius:4,padding:"3px 4px",background:phase?phase.rgba:C.greenLight,borderLeft:`2px solid ${phase?phase.hex:C.green}`,flex:1,overflow:"hidden",cursor:"pointer",minHeight:38}}>
-                              {(s.groupes&&s.groupes.length>0)?<div style={{fontSize:7,fontWeight:700,color:C.muted}}>{s.groupes.join(" / ")}</div>:(s.groupe?<div style={{fontSize:7,fontWeight:700,color:C.muted}}>{s.groupe}</div>:null)}
-                              {(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:7,color:C.muted}}>{d}</div>)}
+                            <div key={s.id} onClick={()=>onSel(s)} style={{position:"absolute",top:`${offsetPercent}%`,left,width,height:`${heightPercent}%`,minHeight:35,borderRadius:4,padding:"3px 4px",background:phase?phase.rgba:C.greenLight,borderLeft:`2.5px solid ${phase?phase.hex:C.green}`,overflow:"hidden",cursor:"pointer",boxSizing:"border-box",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+                              {(s.groupes&&s.groupes.length>0)?(
+                                <>
+                                  <div style={{fontSize:8,fontWeight:700,color:C.muted}}>{s.groupes.join(" / ")}</div>
+                                  <div style={{display:"flex",flexWrap:"wrap",gap:1}}>{(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:6,color:C.muted}}>{d}</div>)}</div>
+                                </>
+                              ):(
+                                <>
+                                  <div style={{fontSize:8,fontWeight:700,color:C.muted}}>{s.type===("muscu")?"Muscu":"Piste"}</div>
+                                  <div style={{fontSize:6,color:C.muted}}>{creator?.prenom||"?"}</div>
+                                </>
+                              )}
                             </div>
                           );
                         })}
