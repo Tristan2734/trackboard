@@ -2206,6 +2206,7 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
   const [cycleId,setCycleId]=useState("");const [seanceIdx,setSeanceIdx]=useState(0);
   const [cycleSearch,setCycleSearch]=useState("");const [color,setColor]=useState("");
   const [libreExos,setLibreExos]=useState([{nom:"",series:4,reps:8,notes:""}]);
+  const [showAthletes,setShowAthletes]=useState(false);
 
   const selCycle=cycleId?cyclesList.find(c=>c.id===cycleId):null;
   const cycleSeances=selCycle?(selCycle.seances||[]):[];
@@ -2267,10 +2268,18 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
         </div>
 
         <div>
-          <Lbl>Athlètes (optionnel)</Lbl>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-            {athletesList.map(a=><button key={a.id} onClick={()=>toggleAth(a.id)} style={{padding:"6px 12px",borderRadius:10,border:`1.5px solid ${selAthletes.includes(a.id)?C.green:C.border}`,background:selAthletes.includes(a.id)?C.greenLight:C.surface,color:selAthletes.includes(a.id)?C.green:C.muted,fontSize:12,fontWeight:selAthletes.includes(a.id)?700:400,cursor:"pointer"}}>{a.prenom} {a.nom[0]}.</button>)}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <Lbl>Athlètes (optionnel)</Lbl>
+            <button onClick={()=>setShowAthletes(!showAthletes)} style={{background:"none",border:"none",fontSize:11,color:C.green,fontWeight:700,cursor:"pointer"}}>
+              {showAthletes?"Masquer":"Afficher"}
+            </button>
           </div>
+          {showAthletes&&(
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {athletesList.map(a=><button key={a.id} onClick={()=>toggleAth(a.id)} style={{padding:"6px 12px",borderRadius:10,border:`1.5px solid ${selAthletes.includes(a.id)?C.green:C.border}`,background:selAthletes.includes(a.id)?C.greenLight:C.surface,color:selAthletes.includes(a.id)?C.green:C.muted,fontSize:12,fontWeight:selAthletes.includes(a.id)?700:400,cursor:"pointer"}}>{a.prenom} {a.nom[0]}.</button>)}
+            </div>
+          )}
+          {selAthletes.length>0&&<div style={{fontSize:11,color:C.green,marginTop:6,fontWeight:600}}>{selAthletes.length} athlète{selAthletes.length>1?"s":""} sélectionné{selAthletes.length>1?"s":""}</div>}
         </div>
 
         <div><Lbl>Lieu</Lbl><input value={lieu} onChange={e=>setLieu(e.target.value)} placeholder="Stade, CREPS, Salle..." className="inp"/></div>
