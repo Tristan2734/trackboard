@@ -649,28 +649,31 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                 );
               })}
             </div>
-            {/* Grille heures 7h-22h */}
-            {Array.from({length:16},(_,h)=>h+7).map(hour=>(
-              <div key={hour} style={{display:"grid",gridTemplateColumns:"40px repeat(7,1fr)",borderTop:`1px solid ${C.border}`,minHeight:50}}>
+            {/* Grille heures 9h-20h */}
+            {Array.from({length:12},(_,h)=>h+9).map(hour=>(
+              <div key={hour} style={{display:"grid",gridTemplateColumns:"40px repeat(7,1fr)",borderTop:`1px solid ${C.border}`,minHeight:45}}>
                 <div style={{fontSize:9,color:C.light,padding:"4px 4px 0",textAlign:"right"}}>{hour}h</div>
                 {seancesByJour.map((seances,dayIdx)=>{
-                  const s=seances.find(s=>{
+                  const seancesAtHour=seances.filter(s=>{
                     const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
                     return hStart===hour;
                   });
-                  if(!s)return<div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`}}/>;
-                  const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
-                  const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
-                  const duration=Math.max(1,hEnd-hStart);
-                  const phase=PALETTE.find(p=>p.hex===s.color);
+                  if(seancesAtHour.length===0)return<div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`}}/>;
                   return(
-                    <div key={dayIdx} onClick={()=>onSel(s)} style={{borderLeft:`1px solid ${C.border}`,padding:2,cursor:"pointer"}}>
-                      <div style={{borderRadius:6,padding:"3px 5px",background:phase?phase.rgba:C.greenLight,borderLeft:`3px solid ${phase?phase.hex:C.green}`,height:`${duration*50-6}px`,overflow:"hidden"}}>
-                        <div style={{fontSize:9,fontWeight:700,color:C.text,lineHeight:1.2}}>{s.heureDebut}–{s.heureFin}</div>
-                        {(s.groupes&&s.groupes.length>0)?<div style={{fontSize:7,color:C.muted,fontWeight:600}}>{s.groupes.join(" / ")}</div>:(s.groupe?<div style={{fontSize:7,color:C.muted,fontWeight:600}}>{s.groupe}</div>:null)}
-                        {s.type==="muscu"&&<div style={{fontSize:8,color:C.muted}}>◆ {s.cycleName||"Muscu"}</div>}
-                        {(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:8,color:C.muted}}>{d}</div>)}
-                      </div>
+                    <div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`,padding:2,display:"flex",flexDirection:"column",gap:1}}>
+                      {seancesAtHour.map((s,idx)=>{
+                        const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
+                        const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
+                        const duration=Math.max(1,hEnd-hStart);
+                        const phase=PALETTE.find(p=>p.hex===s.color);
+                        return(
+                          <div key={s.id} onClick={()=>onSel(s)} style={{borderRadius:5,padding:"2px 4px",background:phase?phase.rgba:C.greenLight,borderLeft:`2px solid ${phase?phase.hex:C.green}`,height:`${duration*45-4}px`,overflow:"hidden",cursor:"pointer",flex:1}}>
+                            <div style={{fontSize:8,fontWeight:700,color:C.text,lineHeight:1}}>{s.heureDebut}–{s.heureFin}</div>
+                            {(s.groupes&&s.groupes.length>0)?<div style={{fontSize:6,color:C.muted,fontWeight:600}}>{s.groupes.join(" / ")}</div>:(s.groupe?<div style={{fontSize:6,color:C.muted,fontWeight:600}}>{s.groupe}</div>:null)}
+                            {(s.disciplines||[]).slice(0,1).map(d=><div key={d} style={{fontSize:7,color:C.muted}}>{d}</div>)}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}
