@@ -2196,10 +2196,10 @@ function CycleDetail({cycle,athletesList,onClose,onUpdate}) {
 }
 
 function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset}) {
-  // Utiliser une vraie date ISO au lieu de weekOffset+jour
-  const todayISO=new Date().toISOString().slice(0,10);
-  const [dateISO,setDateISO]=useState(todayISO);
-  const [hD,setHD]=useState("10:00");const [hF,setHF]=useState("12:00");
+  const ws=weekStart(currentWeekOffset);
+  const mondayISO=ws.toISOString().slice(0,10);
+  const [dateISO,setDateISO]=useState(mondayISO);
+  const [hD,setHD]=useState("16:00");const [hF,setHF]=useState("20:00");
   const [type,setType]=useState("piste");const [groupes,setGroupes]=useState([]);const [lieu,setLieu]=useState("");
   const [contenu,setContenu]=useState("");const [discs,setDiscs]=useState([]);
   const [selAthletes,setSelAthletes]=useState([]);
@@ -2467,15 +2467,18 @@ function DuplicateSeanceModal({seance,onClose,onAdd,athletesList,currentWeekOffs
 }
 
 function AddComp({onClose,onAdd}) {
-  const [nom,setNom]=useState("");const [date,setDate]=useState("");const [lieu,setLieu]=useState("");const [niveau,setNiveau]=useState("Régional");
+  const [nom,setNom]=useState("");const [dateDebut,setDateDebut]=useState("");const [dateFin,setDateFin]=useState("");const [lieu,setLieu]=useState("");const [niveau,setNiveau]=useState("Régional");
   return (
     <Modal onClose={onClose} title="Nouvelle compétition">
       <div style={{display:"flex",flexDirection:"column",gap:14}}>
         <div><Lbl>Nom</Lbl><input value={nom} onChange={e=>setNom(e.target.value)} placeholder="Nom de la compétition" className="inp"/></div>
-        <div><Lbl>Date</Lbl><input type="date" value={date} onChange={e=>setDate(e.target.value)} className="inp"/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div><Lbl>Date début</Lbl><input type="date" value={dateDebut} onChange={e=>setDateDebut(e.target.value)} className="inp"/></div>
+          <div><Lbl>Date fin</Lbl><input type="date" value={dateFin} onChange={e=>setDateFin(e.target.value)} className="inp"/></div>
+        </div>
         <div><Lbl>Lieu</Lbl><input value={lieu} onChange={e=>setLieu(e.target.value)} placeholder="Ville / lieu" className="inp"/></div>
         <div><Lbl>Niveau</Lbl><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{NIVEAUX.map(n=><button key={n} onClick={()=>setNiveau(n)} className={`chip ${niveau===n?"chip-on":"chip-off"}`}>{n}</button>)}</div></div>
-        <button className="btn-primary" onClick={()=>onAdd({nom,date,lieu,niveau,inscriptions:{}})}>Ajouter</button>
+        <button className="btn-primary" onClick={()=>onAdd({nom,dateDebut,dateFin,lieu,niveau,inscriptions:{}})}>Ajouter</button>
       </div>
     </Modal>
   );
