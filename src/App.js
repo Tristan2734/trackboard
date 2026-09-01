@@ -703,32 +703,30 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
               const cs=s.color?colorStyle(s.color):{};
               const cardStyle=s.color
                 ?{...cs,border:"none",borderRadius:16,outline:iPresent?`2.5px solid #D4A017`:undefined,outlineOffset:iPresent?1:undefined}
-                :isCoachCard
-                  ?{background:C.greenMid,border:`1px solid ${C.greenMid}`}
-                  :{background:C.surface,border:iPresent?`2px solid #D4A017`:`1px solid ${nbNL>0?C.dangerBorder:C.border}`};
+                :{background:C.surface,border:iPresent?`2px solid #D4A017`:`1px solid ${nbNL>0?C.dangerBorder:C.border}`};
               return (
                 <div key={s.id} onClick={()=>onSel(s)} style={{margin:"0 16px 8px",padding:"12px 14px",borderRadius:16,cursor:"pointer",position:"relative",...cardStyle}}>
                   {nbNL>0&&<div style={{position:"absolute",top:10,right:12,width:8,height:8,borderRadius:"50%",background:C.danger}}/>}
-                  {isCoachCard&&<div style={{fontSize:8,fontWeight:800,color:"#9FD4A8",letterSpacing:1,marginBottom:6}}>COACH · {coaches.map(c=>c.prenom).join(", ")}</div>}
+                  {isCoachCard&&<div style={{fontSize:8,fontWeight:800,color:C.green,letterSpacing:1,marginBottom:6}}>COACH · {coaches.map(c=>c.prenom).join(", ")}</div>}
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <SeanceIcon type={s.type} size={36} light={isCoachCard}/>
+                    <SeanceIcon type={s.type} size={36} light={false}/>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}>
-                        <span style={{fontSize:15,fontWeight:800,color:isCoachCard?"#fff":C.text}}>{s.heureDebut}–{s.heureFin}</span>
-                        {(s.groupes&&s.groupes.length>0)?s.groupes.map(g=><span key={g} className="tag" style={{background:isCoachCard?"rgba(255,255,255,0.15)":C.alt,color:isCoachCard?"rgba(255,255,255,0.7)":C.muted}}>{g}</span>):s.groupe&&<span className="tag" style={{background:isCoachCard?"rgba(255,255,255,0.15)":C.alt,color:isCoachCard?"rgba(255,255,255,0.7)":C.muted}}>{s.groupe}</span>}
+                        <span style={{fontSize:15,fontWeight:800,color:C.text}}>{s.heureDebut}–{s.heureFin}</span>
+                        {(s.groupes&&s.groupes.length>0)?s.groupes.map(g=><span key={g} className="tag" style={{background:C.alt,color:C.muted}}>{g}</span>):s.groupe&&<span className="tag" style={{background:C.alt,color:C.muted}}>{s.groupe}</span>}
                       </div>
                       {(s.disciplines||[]).length>0?(
                         <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
-                          {(s.disciplines||[]).map(d=><span key={d} style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:5,background:isCoachCard?"rgba(255,255,255,0.15)":C.greenLight,color:isCoachCard?"rgba(255,255,255,0.8)":C.greenMid}}>{d}</span>)}
+                          {(s.disciplines||[]).map(d=><span key={d} style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:5,background:C.greenLight,color:C.greenMid}}>{d}</span>)}
                         </div>
-                      ):s.cycleId?<div style={{fontSize:11,color:isCoachCard?"rgba(255,255,255,0.5)":C.muted,fontWeight:300}}>◆ {s.cycleName||"Muscu"}{s.seanceName?` · ${s.seanceName}`:""}</div>:null}
+                      ):s.cycleId?<div style={{fontSize:11,color:C.muted,fontWeight:300}}>◆ {s.cycleName||"Muscu"}{s.seanceName?` · ${s.seanceName}`:""}</div>:null}
                     </div>
                     <div style={{flexShrink:0,textAlign:"right"}}>
                       <div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"flex-end"}}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isCoachCard?"#fff":nbP>0?C.green:C.light} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
-                        <div style={{fontSize:15,fontWeight:800,color:isCoachCard?"#fff":nbP>0?C.green:C.light}}>{nbP}</div>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={nbP>0?C.green:C.light} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4"/><path d="M5.5 21c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/></svg>
+                        <div style={{fontSize:15,fontWeight:800,color:nbP>0?C.green:C.light}}>{nbP}</div>
                       </div>
-                      {s.createdBy&&(()=>{const creator=athletesList.find(a=>a.id===s.createdBy);return creator?<div style={{fontSize:9,color:isCoachCard?"rgba(255,255,255,0.7)":"#8A8578",fontWeight:600,marginTop:2,textAlign:"right"}}>{creator.prenom}</div>:null;})()}
+                      {s.createdBy&&(()=>{const creator=athletesList.find(a=>a.id===s.createdBy);return creator?<div style={{fontSize:9,color:"#8A8578",fontWeight:600,marginTop:2,textAlign:"right"}}>{creator.prenom}</div>:null;})()}
                     </div>
                   </div>
                 </div>
