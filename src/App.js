@@ -579,8 +579,18 @@ export default function App() {
 }
 
 function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd,vueHorizontale,setVueHorizontale}) {
+  const touchStartX=useRef(null);
+
+  function handleTouchStart(e){touchStartX.current=e.touches[0].clientX;}
+  function handleTouchEnd(e){
+    if(touchStartX.current===null)return;
+    const dx=e.changedTouches[0].clientX-touchStartX.current;
+    if(Math.abs(dx)>60){dx<0?setWeekOffset(w=>w+1):setWeekOffset(w=>w-1);}
+    touchStartX.current=null;
+  }
+
   return (
-    <div>
+    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <div style={{padding:"12px 20px 8px"}}>
         {/* Nav semaine */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
@@ -2161,9 +2171,9 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
   const todayISO=new Date().toISOString().slice(0,10);
   const [dateISO,setDateISO]=useState(todayISO);
   const [hD,setHD]=useState("10:00");const [hF,setHF]=useState("12:00");
-  const [type,setType]=useState("piste");const [groupe,setGroupe]=useState("");const [lieu,setLieu]=useState("");
+  const [type,setType]=useState("piste");const [groupes,setGroupes]=useState([]);const [lieu,setLieu]=useState("");
   const [contenu,setContenu]=useState("");const [discs,setDiscs]=useState([]);
-  const [selAthletes,setSelAthletes]=useState([]);const [mode,setMode]=useState("groupe");
+  const [selAthletes,setSelAthletes]=useState([]);
   const [cycleId,setCycleId]=useState("");const [seanceIdx,setSeanceIdx]=useState(0);
   const [cycleSearch,setCycleSearch]=useState("");const [color,setColor]=useState("");
   const [libreExos,setLibreExos]=useState([{nom:"",series:4,reps:8,notes:""}]);
@@ -2183,12 +2193,12 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
 
   function submit(){
     const presences={[user.id]:"present"};
-    if(mode==="athletes")selAthletes.forEach(id=>presences[id]="present");
+    selAthletes.forEach(id=>presences[id]="present");
     const cycleName=selCycle?.nom||"";
     const seanceName=cycleSeances[seanceIdx]?.nom||"";
     const libreExosData=type==="muscu"&&!cycleId?libreExos.filter(e=>e.nom):[];
     // Stocker dateISO pour fixer définitivement la séance dans sa date
-    onAdd({dateISO,jour,heureDebut:hD,heureFin:hF,type,groupe:mode==="groupe"?groupe:"",athletes:mode==="athletes"?selAthletes:[],lieu,contenu,disciplines:discs,cycleId:type==="muscu"?cycleId:"",seanceIdx:type==="muscu"?seanceIdx:0,cycleName,seanceName,color,presences,libreExos:libreExosData},wo);
+    onAdd({dateISO,jour,heureDebut:hD,heureFin:hF,type,groupes,athletes:selAthletes,lieu,contenu,disciplines:discs,cycleId:type==="muscu"?cycleId:"",seanceIdx:type==="muscu"?seanceIdx:0,cycleName,seanceName,color,presences,libreExos:libreExosData},wo);
   }
 
   return (
@@ -2222,21 +2232,17 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
         </div>
 
         <div>
-          <Lbl>Pour qui</Lbl>
-          <div style={{display:"flex",gap:8,marginBottom:10}}>
-            {[["groupe","Par groupe"],["athletes","Spécifiques"]].map(([v,l])=>(
-              <button key={v} onClick={()=>setMode(v)} className={`chip ${mode===v?"chip-on":"chip-off"}`} style={{flex:1,justifyContent:"center"}}>{l}</button>
-            ))}
+          <Lbl>Groupes</Lbl>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:16}}>
+            {GROUPES.map(g=><button key={g} onClick={()=>setGroupes(p=>p.includes(g)?p.filter(x=>x!==g):[...p,g])} className={`chip ${groupes.includes(g)?"chip-on":"chip-off"}`}>{g}</button>)}
           </div>
-          {mode==="groupe"?(
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {["Tous",...GROUPES].map(g=><button key={g} onClick={()=>setGroupe(g===groupe?"":g)} className={`chip ${groupe===g?"chip-on":"chip-off"}`}>{g}</button>)}
-            </div>
-          ):(
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {athletesList.map(a=><button key={a.id} onClick={()=>toggleAth(a.id)} style={{padding:"6px 12px",borderRadius:10,border:`1.5px solid ${selAthletes.includes(a.id)?C.green:C.border}`,background:selAthletes.includes(a.id)?C.greenLight:C.surface,color:selAthletes.includes(a.id)?C.green:C.muted,fontSize:12,fontWeight:selAthletes.includes(a.id)?700:400,cursor:"pointer"}}>{a.prenom} {a.nom[0]}.</button>)}
-            </div>
-          )}
+        </div>
+
+        <div>
+          <Lbl>Athlètes (optionnel)</Lbl>
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {athletesList.map(a=><button key={a.id} onClick={()=>toggleAth(a.id)} style={{padding:"6px 12px",borderRadius:10,border:`1.5px solid ${selAthletes.includes(a.id)?C.green:C.border}`,background:selAthletes.includes(a.id)?C.greenLight:C.surface,color:selAthletes.includes(a.id)?C.green:C.muted,fontSize:12,fontWeight:selAthletes.includes(a.id)?700:400,cursor:"pointer"}}>{a.prenom} {a.nom[0]}.</button>)}
+          </div>
         </div>
 
         <div><Lbl>Lieu</Lbl><input value={lieu} onChange={e=>setLieu(e.target.value)} placeholder="Stade, CREPS, Salle..." className="inp"/></div>
