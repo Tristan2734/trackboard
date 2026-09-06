@@ -899,7 +899,7 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
       <div style={{marginBottom:14}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
           <Lbl>Disciplines</Lbl>
-          <button onClick={()=>setEditDiscs(!editDiscs)} style={{background:"none",border:"none",fontSize:11,color:C.green,fontWeight:700,cursor:"pointer"}}>
+          <button onClick={editDiscs?saveDiscs:()=>setEditDiscs(true)} style={{background:"none",border:"none",fontSize:11,color:C.green,fontWeight:700,cursor:"pointer"}}>
             {editDiscs?"Valider":"Modifier"}
           </button>
         </div>
