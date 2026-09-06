@@ -668,7 +668,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                             <div key={s.id} onClick={()=>onSel(s)} style={{position:"absolute",top:`${offsetPercent}%`,left,width,height:`${heightPercent}%`,minHeight:35,borderRadius:4,padding:"3px 4px",background:phase?phase.rgba:C.greenLight,borderLeft:`2.5px solid ${phase?phase.hex:C.green}`,overflow:"hidden",cursor:"pointer",boxSizing:"border-box",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
                               {(s.groupes&&s.groupes.length>0)||s.groupe?(
                                 <>
-                                  <div style={{fontSize:8,fontWeight:700,color:C.muted}}>{s.groupes?.length>0?s.groupes.join(" / "):s.groupe}</div>
+                                  <div style={{fontSize:8,fontWeight:700,color:C.text}}>{s.groupes?.length>0?s.groupes.join(" / "):s.groupe}</div>
                                   <div style={{display:"flex",flexWrap:"wrap",gap:1}}>{(s.disciplines||[]).slice(0,2).map(d=><div key={d} style={{fontSize:6,color:C.muted}}>{d}</div>)}</div>
                                 </>
                               ):(
@@ -723,7 +723,7 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}>
                         <span style={{fontSize:15,fontWeight:800,color:C.text}}>{s.heureDebut}–{s.heureFin}</span>
-                        {(s.groupes&&s.groupes.length>0)?s.groupes.map(g=><span key={g} className="tag" style={{background:C.alt,color:C.muted}}>{g}</span>):s.groupe&&<span className="tag" style={{background:C.alt,color:C.muted}}>{s.groupe}</span>}
+                        {(s.groupes&&s.groupes.length>0)?s.groupes.map(g=><span key={g} className="tag" style={{background:C.alt,color:C.text}}>{g}</span>):s.groupe&&<span className="tag" style={{background:C.alt,color:C.text}}>{s.groupe}</span>}
                       </div>
                       {(s.disciplines||[]).length>0?(
                         <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
@@ -766,6 +766,13 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   const [discsVal,setDiscsVal]=useState(seance.disciplines||[]);
   const [editHoraires,setEditHoraires]=useState(false);
   const [editLibreExos,setEditLibreExos]=useState(false);
+  
+  useEffect(() => {
+    setDiscsVal(seance.disciplines||[]);
+    setGroupesVal(seance.groupes||[]);
+    setContenu(seance.contenu||"");
+    setColor(seance.color||"");
+  }, [seance.id]);
   const initExos=(()=>{
     if(seance.libreExos?.length>0)return seance.libreExos;
     if(cycle){
