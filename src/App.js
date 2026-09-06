@@ -406,7 +406,12 @@ export default function App() {
         if(!hasGroupe)return false;
       }
       if(filterMine&&!(s.presences||{})[user.id])return false;
-      if(filterAthlete!=="all"&&!(s.presences||{})[filterAthlete])return false;
+      if(filterAthlete!=="all"){
+        const isPresent=(s.presences||{})[filterAthlete];
+        const athlete=athletesList.find(a=>a.id===filterAthlete);
+        const inAthleteGroup=athlete&&((s.groupes&&s.groupes.includes(athlete.groupe))||(s.groupe&&s.groupe===athlete.groupe));
+        if(!isPresent&&!inAthleteGroup)return false;
+      }
       return true;
     }).sort((a,b)=>(a.heureDebut||"").localeCompare(b.heureDebut||""))
   );
