@@ -402,8 +402,8 @@ export default function App() {
       if(sJour!==i)return false;
       if(sWeekOffset!==weekOffset)return false;
       if(filterGroupe!=="all"){
-        if(!s.groupe||s.groupe==="")return false;
-        if(s.groupe!==filterGroupe)return false;
+        const hasGroupe=(s.groupes&&s.groupes.length>0)?s.groupes.includes(filterGroupe):(s.groupe&&s.groupe===filterGroupe);
+        if(!hasGroupe)return false;
       }
       if(filterMine&&!(s.presences||{})[user.id])return false;
       if(filterAthlete!=="all"&&!(s.presences||{})[filterAthlete])return false;
