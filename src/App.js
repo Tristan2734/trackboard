@@ -655,7 +655,8 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                   {seancesByJour.map((seances,dayIdx)=>{
                     const seancesInSlot=seances.filter(s=>{
                       const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
-                      return hStart>=hourStart&&hStart<hourEnd;
+                      const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
+                      return hEnd>hourStart&&hStart<hourEnd;
                     });
                     if(seancesInSlot.length===0)return<div key={dayIdx} style={{borderLeft:`1px solid ${C.border}`}}/>;
                     return(
@@ -663,8 +664,10 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
                         {seancesInSlot.map((s,idx)=>{
                           const hStart=parseInt((s.heureDebut||"00:00").split(":")[0]);
                           const hEnd=parseInt((s.heureFin||"00:00").split(":")[0]);
-                          const offsetPercent=((hStart-hourStart)/2)*100;
-                          const heightPercent=((hEnd-hStart)/2)*100;
+                          const displayStart=Math.max(hStart,hourStart);
+                          const displayEnd=Math.min(hEnd,hourEnd);
+                          const offsetPercent=((displayStart-hourStart)/2)*100;
+                          const heightPercent=((displayEnd-displayStart)/2)*100;
                           const phase=PALETTE.find(p=>p.hex===s.color);
                           const creator=athletesList.find(a=>a.id===s.createdBy);
                           const width=seancesInSlot.length>=2?"calc(50% - 1px)":"calc(100% - 4px)";
