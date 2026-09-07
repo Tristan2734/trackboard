@@ -1795,18 +1795,23 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
   const byWeek={};
   mySeances.forEach(s=>{
     const log=logs[`${user.id}_${s.id}`];
-    // Utiliser le weekOffset de la séance pour trouver la vraie semaine
-    const ws=weekStart(s.weekOffset||0);
+    // Utiliser dateISO en priorité pour trouver la vraie semaine
+    let wo=s.weekOffset||0;let jo=s.jour||0;
+    if(s.dateISO){
+      const p=parseDateISO(s.dateISO);
+      wo=p.weekOffset;jo=p.jour;
+    }
+    const ws=weekStart(wo);
     const dayDate=new Date(ws);
-    dayDate.setDate(ws.getDate()+(s.jour||0));
+    dayDate.setDate(ws.getDate()+jo);
     const wk=weekLabel(ws);
     if(!byWeek[wk])byWeek[wk]=[];
     byWeek[wk].push({s,log,dayDate});
   });
   // Trier les semaines par date décroissante
   const byWeekSorted=Object.entries(byWeek).sort((a,b)=>{
-    const wa=weekStart(a[1][0]?.s?.weekOffset||0);
-    const wb=weekStart(b[1][0]?.s?.weekOffset||0);
+    const wa=weekStart((a[1][0]?.s?.dateISO?parseDateISO(a[1][0].s.dateISO).weekOffset:a[1][0]?.s?.weekOffset)||0);
+    const wb=weekStart((b[1][0]?.s?.dateISO?parseDateISO(b[1][0].s.dateISO).weekOffset:b[1][0]?.s?.weekOffset)||0);
     return wb-wa;
   });
 
