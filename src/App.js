@@ -138,6 +138,15 @@ function weekLabel(date) {
   return `Sem. ${wn} · ${fmt(date)} – ${fmt(end)} ${y}`;
 }
 
+function formatDateFR(dateStr) {
+  if(!dateStr) return "";
+  const date = new Date(dateStr + "T00:00:00");
+  const jour = date.getDate();
+  const mois = date.toLocaleDateString("fr-FR",{month:"long"});
+  const annee = date.getFullYear();
+  return `${jour} ${mois.charAt(0).toUpperCase() + mois.slice(1)} ${annee}`;
+}
+
 function colorStyle(colorHex) {
   const p = PALETTE.find(c => c.hex === colorHex);
   return p ? { background: p.rgba, borderLeft: `4px solid ${p.hex}` } : { background: C.surface, border: `1px solid ${C.border}` };
@@ -1990,7 +1999,9 @@ function Comps({comps,athletesList,isCoach,user,onUpdateComp,onDeleteComp,onAdd}
               <div style={{fontSize:17,fontWeight:800,flex:1,marginRight:8}}>{c.nom}</div>
               <span className="tag" style={{background:C.greenLight,color:C.green,padding:"4px 10px",flexShrink:0}}>{c.niveau}</span>
             </div>
-            <div style={{fontSize:13,color:C.muted,fontWeight:300,marginBottom:14}}>{c.dateDebut&&c.dateFin?`${c.dateDebut} - ${c.dateFin}`:c.date} · {c.lieu}</div>
+            <div style={{fontSize:13,color:C.muted,fontWeight:300,marginBottom:14}}>
+              {c.dateDebut&&c.dateFin?`${formatDateFR(c.dateDebut)} - ${formatDateFR(c.dateFin)}`:c.dateDebut?formatDateFR(c.dateDebut):c.date} · {c.lieu}
+            </div>
 
             {/* Info coach */}
             {c.info&&<div style={{padding:"10px 12px",borderRadius:10,background:C.alt,marginBottom:12,fontSize:13,color:C.text,lineHeight:1.6,fontWeight:300}}>{c.info}</div>}
