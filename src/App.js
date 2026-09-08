@@ -1977,7 +1977,7 @@ function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach}) {
 }
 
 function Comps({comps,athletesList,isCoach,user,onUpdateComp,onDeleteComp,onAdd}) {
-  const list=Object.entries(comps||{}).map(([id,c])=>({...c,id})).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const list=Object.entries(comps||{}).map(([id,c])=>({...c,id})).sort((a,b)=>(a.dateDebut||a.date||"").localeCompare(b.dateDebut||b.date||""));
   return (
     <div style={{padding:"16px 20px"}}>
       {isCoach&&<button onClick={onAdd} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.border}`,background:"transparent",color:C.muted,fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:16}}>+ Ajouter une compétition</button>}
@@ -1990,7 +1990,7 @@ function Comps({comps,athletesList,isCoach,user,onUpdateComp,onDeleteComp,onAdd}
               <div style={{fontSize:17,fontWeight:800,flex:1,marginRight:8}}>{c.nom}</div>
               <span className="tag" style={{background:C.greenLight,color:C.green,padding:"4px 10px",flexShrink:0}}>{c.niveau}</span>
             </div>
-            <div style={{fontSize:13,color:C.muted,fontWeight:300,marginBottom:14}}>{c.date} · {c.lieu}</div>
+            <div style={{fontSize:13,color:C.muted,fontWeight:300,marginBottom:14}}>{c.dateDebut&&c.dateFin?`${c.dateDebut} - ${c.dateFin}`:c.date} · {c.lieu}</div>
 
             {/* Info coach */}
             {c.info&&<div style={{padding:"10px 12px",borderRadius:10,background:C.alt,marginBottom:12,fontSize:13,color:C.text,lineHeight:1.6,fontWeight:300}}>{c.info}</div>}
