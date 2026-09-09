@@ -969,7 +969,7 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
               {libreExos.map((e,i)=>(
                 <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
                   <div style={{position:"relative",marginBottom:8}}>
-                    <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",minHeight:"80px",padding:"8px 32px 8px 8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,display:"block"}}/>
+                    <textarea rows={5} value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",padding:"8px 32px 8px 8px",resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
                     <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
@@ -1106,7 +1106,7 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
           {exos.map((e,i)=>(
             <div key={i} style={{padding:"12px",borderRadius:12,background:C.alt,marginBottom:8}}>
               <div style={{position:"relative",marginBottom:8}}>
-                <textarea value={e.nom} onChange={ev=>updExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",minHeight:"80px",padding:"8px 32px 8px 8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,display:"block"}}/>
+                <textarea rows={5} value={e.nom} onChange={ev=>updExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",padding:"8px 32px 8px 8px",resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
                 <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
               </div>
               {(e.seriesPrev||e.repsPrev)&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginBottom:6}}>Prévu : {e.seriesPrev}×{e.repsPrev}</div>}
@@ -2364,7 +2364,7 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
             {libreExos.map((e,i)=>(
               <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
                 <div style={{position:"relative",marginBottom:8}}>
-                  <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",minHeight:"80px",padding:"8px 32px 8px 8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,display:"block"}}/>
+                  <textarea rows={5} value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",padding:"8px 32px 8px 8px",resize:"vertical",fontFamily:"inherit",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
                   <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
