@@ -968,9 +968,9 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
             <div>
               {libreExos.map((e,i)=>(
                 <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
-                  <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"flex-start"}}>
-                    <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",width:"100%",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
-                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2,flexShrink:0}}>✕</button>
+                  <div style={{position:"relative",marginBottom:8}}>
+                    <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",minHeight:"80px",padding:"8px 32px 8px 8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,display:"block"}}/>
+                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
                     {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
@@ -1105,9 +1105,9 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
           )}
           {exos.map((e,i)=>(
             <div key={i} style={{padding:"12px",borderRadius:12,background:C.alt,marginBottom:8}}>
-              <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"flex-start"}}>
-                <textarea value={e.nom} onChange={ev=>updExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",width:"100%",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
-                <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2}}>✕</button>
+              <div style={{position:"relative",marginBottom:8}}>
+                <textarea value={e.nom} onChange={ev=>updExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",minHeight:"80px",padding:"8px 32px 8px 8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,display:"block"}}/>
+                <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
               </div>
               {(e.seriesPrev||e.repsPrev)&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginBottom:6}}>Prévu : {e.seriesPrev}×{e.repsPrev}</div>}
               <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
@@ -2363,9 +2363,9 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
             <Lbl>Exercices de la séance</Lbl>
             {libreExos.map((e,i)=>(
               <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
-                <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"flex-start"}}>
-                  <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",width:"100%",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
-                  <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2,flexShrink:0}}>✕</button>
+                <div style={{position:"relative",marginBottom:8}}>
+                  <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{width:"100%",minHeight:"80px",padding:"8px 32px 8px 8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,display:"block"}}/>
+                  <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
                   {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
