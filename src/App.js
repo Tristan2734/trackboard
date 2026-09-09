@@ -969,7 +969,7 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
               {libreExos.map((e,i)=>(
                 <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
                   <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"flex-start"}}>
-                    <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word"}}/>
+                    <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",width:"100%",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
                     <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2,flexShrink:0}}>✕</button>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
@@ -1106,7 +1106,7 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
           {exos.map((e,i)=>(
             <div key={i} style={{padding:"12px",borderRadius:12,background:C.alt,marginBottom:8}}>
               <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"flex-start"}}>
-                <textarea value={e.nom} onChange={ev=>updExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word"}}/>
+                <textarea value={e.nom} onChange={ev=>updExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",width:"100%",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
                 <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2}}>✕</button>
               </div>
               {(e.seriesPrev||e.repsPrev)&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginBottom:6}}>Prévu : {e.seriesPrev}×{e.repsPrev}</div>}
@@ -2364,7 +2364,7 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
             {libreExos.map((e,i)=>(
               <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
                 <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"flex-start"}}>
-                  <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word"}}/>
+                  <textarea value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" style={{flex:1,minWidth:0,minHeight:"80px",padding:"8px",resize:"none",fontFamily:"inherit",whiteSpace:"normal",wordWrap:"break-word",overflowWrap:"break-word",wordBreak:"break-word",width:"100%",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14}}/>
                   <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2,flexShrink:0}}>✕</button>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
