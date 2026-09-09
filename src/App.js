@@ -968,15 +968,15 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
             <div>
               {libreExos.map((e,i)=>(
                 <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
-                  <div style={{position:"relative",marginBottom:8}}>
+                  <div style={{marginBottom:8,display:"flex",gap:6,alignItems:"flex-start"}}>
                     <textarea 
                       value={e.nom} 
                       onChange={ev=>updLibreExo(i,"nom",ev.target.value)} 
-                      onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=Math.min(ev.target.scrollHeight,300)+"px"}}
-                      placeholder="Exercice" 
-                      style={{width:"100%",padding:"8px 32px 8px 8px",fontFamily:"inherit",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,resize:"none",minHeight:"60px",maxHeight:"300px",overflow:"hidden"}}
+                      onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=(ev.target.scrollHeight)+"px"}}
+                      placeholder="Exercice"
+                      style={{flex:1,padding:"10px",borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,color:C.text,fontFamily:"inherit",fontSize:14,resize:"none",minHeight:"50px"}}
                     />
-                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,paddingTop:10}}>✕</button>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
                     {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
@@ -1111,15 +1111,15 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
           )}
           {exos.map((e,i)=>(
             <div key={i} style={{padding:"12px",borderRadius:12,background:C.alt,marginBottom:8}}>
-              <div style={{position:"relative",marginBottom:8}}>
+              <div style={{marginBottom:8,display:"flex",gap:8,alignItems:"flex-start"}}>
                 <textarea 
                   value={e.nom} 
                   onChange={ev=>updExo(i,"nom",ev.target.value)} 
-                  onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=Math.min(ev.target.scrollHeight,300)+"px"}}
-                  placeholder="Exercice" 
-                  style={{width:"100%",padding:"8px 32px 8px 8px",fontFamily:"inherit",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,resize:"none",minHeight:"60px",maxHeight:"300px",overflow:"hidden"}}
+                  onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=(ev.target.scrollHeight)+"px"}}
+                  placeholder="Exercice"
+                  style={{flex:1,padding:"10px",borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,color:C.text,fontFamily:"inherit",fontSize:14,resize:"none",minHeight:"50px"}}
                 />
-                <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+                <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,paddingTop:10}}>✕</button>
               </div>
               {(e.seriesPrev||e.repsPrev)&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginBottom:6}}>Prévu : {e.seriesPrev}×{e.repsPrev}</div>}
               <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
@@ -2375,15 +2375,15 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
             <Lbl>Exercices de la séance</Lbl>
             {libreExos.map((e,i)=>(
               <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
-                <div style={{position:"relative",marginBottom:8}}>
+                <div style={{marginBottom:8,display:"flex",gap:6,alignItems:"flex-start"}}>
                   <textarea 
                     value={e.nom} 
                     onChange={ev=>updLibreExo(i,"nom",ev.target.value)} 
-                    onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=Math.min(ev.target.scrollHeight,300)+"px"}}
-                    placeholder="Exercice" 
-                    style={{width:"100%",padding:"8px 32px 8px 8px",fontFamily:"inherit",boxSizing:"border-box",border:`1px solid ${C.border}`,borderRadius:8,background:C.surface,color:C.text,fontSize:14,resize:"none",minHeight:"60px",maxHeight:"300px",overflow:"hidden"}}
+                    onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=(ev.target.scrollHeight)+"px"}}
+                    placeholder="Exercice"
+                    style={{flex:1,padding:"10px",borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,color:C.text,fontFamily:"inherit",fontSize:14,resize:"none",minHeight:"50px"}}
                   />
-                  <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{position:"absolute",top:8,right:8,background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+                  <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,paddingTop:10}}>✕</button>
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
                   {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
