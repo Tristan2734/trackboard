@@ -968,11 +968,11 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
             <div>
               {libreExos.map((e,i)=>(
                 <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
-                  <div style={{display:"flex",gap:6,marginBottom:6}}>
-                    <input value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1}}/>
-                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+                  <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"flex-start"}}>
+                    <input value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1,minHeight:"50px",wordWrap:"break-word",whiteSpace:"normal",padding:"8px"}}/>
+                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2,flexShrink:0}}>✕</button>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                  <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
                     {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
                       <input key={f} value={e[f]||""} onChange={ev=>updLibreExo(i,f,ev.target.value)} placeholder={ph} className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/>
                     ))}
@@ -1105,12 +1105,12 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
           )}
           {exos.map((e,i)=>(
             <div key={i} style={{padding:"12px",borderRadius:12,background:C.alt,marginBottom:8}}>
-              <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
-                <input value={e.nom} onChange={ev=>updExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1,padding:"8px 10px",fontSize:14}}/>
-                <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+              <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"flex-start"}}>
+                <input value={e.nom} onChange={ev=>updExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1,minHeight:"50px",wordWrap:"break-word",whiteSpace:"normal",padding:"8px"}}/>
+                <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2}}>✕</button>
               </div>
               {(e.seriesPrev||e.repsPrev)&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginBottom:6}}>Prévu : {e.seriesPrev}×{e.repsPrev}</div>}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+              <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
                 <div><div style={{fontSize:10,color:C.muted,marginBottom:3,fontWeight:600}}>Séries</div><input type="number" value={e.series||""} onChange={ev=>updExo(i,"series",ev.target.value)} placeholder="0" className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:14}}/></div>
                 <div><div style={{fontSize:10,color:C.muted,marginBottom:3,fontWeight:600}}>Poids (kg)</div><input value={e.poids||""} onChange={ev=>updExo(i,"poids",ev.target.value)} placeholder="80/85/90" className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/></div>
                 <div><div style={{fontSize:10,color:C.muted,marginBottom:3,fontWeight:600}}>RPE</div><input type="number" min={1} max={10} value={e.rpe||""} onChange={ev=>updExo(i,"rpe",ev.target.value)} placeholder="0" className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:14}}/></div>
@@ -2363,11 +2363,11 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
             <Lbl>Exercices de la séance</Lbl>
             {libreExos.map((e,i)=>(
               <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
-                <div style={{display:"flex",gap:6,marginBottom:6}}>
-                  <input value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1}}/>
-                  <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0}}>✕</button>
+                <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"flex-start"}}>
+                  <input value={e.nom} onChange={ev=>updLibreExo(i,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1,minHeight:"50px",wordWrap:"break-word",whiteSpace:"normal",padding:"8px"}}/>
+                  <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,marginTop:2,flexShrink:0}}>✕</button>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
                   {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
                     <input key={f} value={e[f]||""} onChange={ev=>updLibreExo(i,f,ev.target.value)} placeholder={ph} className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/>
                   ))}
