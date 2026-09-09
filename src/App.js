@@ -217,6 +217,26 @@ function Modal({children,onClose,title,full,noBackdropClose}) {
   );
 }
 
+function AutoTextarea({value,onChange,placeholder,style}) {
+  const taRef=useRef(null);
+  useEffect(()=>{
+    const el=taRef.current;
+    if(!el)return;
+    el.style.height="auto";
+    el.style.height=el.scrollHeight+"px";
+  },[value]);
+  return (
+    <textarea
+      ref={taRef}
+      rows={1}
+      value={value||""}
+      onChange={ev=>onChange(ev.target.value)}
+      placeholder={placeholder}
+      style={{width:"100%",display:"block",boxSizing:"border-box",padding:"11px 12px",borderRadius:12,border:`1.5px solid ${C.border}`,background:C.surface,color:C.text,fontSize:14,fontFamily:"'Plus Jakarta Sans',sans-serif",lineHeight:1.4,outline:"none",resize:"none",overflow:"hidden",...style}}
+    />
+  );
+}
+
 function SeanceIcon({type,size=36,light}) {
   const cfg = type==="muscu"?{bg:"#F0EDE8",icon:"ti-barbell",clr:"#5A3A1A"}:type==="autonomie"?{bg:"#EAF0F5",icon:"ti-run",clr:"#3A5A7A"}:{bg:"#E8F0E8",icon:"ti-run",clr:"#1C3326"};
   return (
@@ -968,19 +988,15 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
             <div>
               {libreExos.map((e,i)=>(
                 <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
-                  <div style={{marginBottom:8,display:"flex",gap:6,alignItems:"flex-start"}}>
-                    <textarea 
-                      value={e.nom} 
-                      onChange={ev=>updLibreExo(i,"nom",ev.target.value)} 
-                      onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=(ev.target.scrollHeight)+"px"}}
-                      placeholder="Exercice"
-                      style={{flex:1,padding:"10px",borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,color:C.text,fontFamily:"inherit",fontSize:14,resize:"none",minHeight:"50px"}}
-                    />
-                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,paddingTop:10}}>✕</button>
+                  <div style={{marginBottom:6,display:"flex",gap:6,alignItems:"flex-start"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <AutoTextarea value={e.nom} onChange={v=>updLibreExo(i,"nom",v)} placeholder="Exercice"/>
+                    </div>
+                    <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,padding:"10px 0"}}>✕</button>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
+                  <div style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr",gap:6,alignItems:"start"}}>
                     {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
-                      <input key={f} value={e[f]||""} onChange={ev=>updLibreExo(i,f,ev.target.value)} placeholder={ph} className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/>
+                      <AutoTextarea key={f} value={e[f]} onChange={v=>updLibreExo(i,f,v)} placeholder={ph} style={{textAlign:"center",padding:"9px 6px",fontSize:12}}/>
                     ))}
                   </div>
                 </div>
@@ -1112,14 +1128,10 @@ function LogModal({seance,athleteId,existing,cyclesList,onClose,onSave}) {
           {exos.map((e,i)=>(
             <div key={i} style={{padding:"12px",borderRadius:12,background:C.alt,marginBottom:8}}>
               <div style={{marginBottom:8,display:"flex",gap:8,alignItems:"flex-start"}}>
-                <textarea 
-                  value={e.nom} 
-                  onChange={ev=>updExo(i,"nom",ev.target.value)} 
-                  onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=(ev.target.scrollHeight)+"px"}}
-                  placeholder="Exercice"
-                  style={{flex:1,padding:"10px",borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,color:C.text,fontFamily:"inherit",fontSize:14,resize:"none",minHeight:"50px"}}
-                />
-                <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,paddingTop:10}}>✕</button>
+                <div style={{flex:1,minWidth:0}}>
+                  <AutoTextarea value={e.nom} onChange={v=>updExo(i,"nom",v)} placeholder="Exercice"/>
+                </div>
+                <button onClick={()=>setExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,padding:"10px 0"}}>✕</button>
               </div>
               {(e.seriesPrev||e.repsPrev)&&<div style={{fontSize:11,color:C.muted,fontWeight:300,marginBottom:6}}>Prévu : {e.seriesPrev}×{e.repsPrev}</div>}
               <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
@@ -2197,13 +2209,15 @@ function CycleDetail({cycle,athletesList,onClose,onUpdate}) {
             <input value={sc.nom} onChange={e=>updScNom(si,e.target.value)} placeholder="Nom (ex: Jour A...)" className="inp" style={{marginBottom:10,background:C.surface}}/>
             {(sc.exercices||[]).map((e,ei)=>(
               <div key={ei} style={{padding:"10px",borderRadius:10,background:C.surface,marginBottom:6}}>
-                <div style={{display:"flex",gap:6,marginBottom:6}}>
-                  <input value={e.nom} onChange={ev=>updEx(si,ei,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1}}/>
-                  <button onClick={()=>delEx(si,ei)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+                <div style={{display:"flex",gap:6,marginBottom:6,alignItems:"flex-start"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <AutoTextarea value={e.nom} onChange={v=>updEx(si,ei,"nom",v)} placeholder="Exercice"/>
+                  </div>
+                  <button onClick={()=>delEx(si,ei)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,padding:"10px 0",flexShrink:0}}>✕</button>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                <div style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr",gap:6,alignItems:"start"}}>
                   {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
-                    <input key={f} value={e[f]||""} onChange={ev=>updEx(si,ei,f,ev.target.value)} placeholder={ph} className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/>
+                    <AutoTextarea key={f} value={e[f]} onChange={v=>updEx(si,ei,f,v)} placeholder={ph} style={{textAlign:"center",padding:"9px 6px",fontSize:12}}/>
                   ))}
                 </div>
               </div>
@@ -2375,19 +2389,15 @@ function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset
             <Lbl>Exercices de la séance</Lbl>
             {libreExos.map((e,i)=>(
               <div key={i} style={{padding:"10px",borderRadius:10,background:C.alt,marginBottom:6}}>
-                <div style={{marginBottom:8,display:"flex",gap:6,alignItems:"flex-start"}}>
-                  <textarea 
-                    value={e.nom} 
-                    onChange={ev=>updLibreExo(i,"nom",ev.target.value)} 
-                    onInput={ev=>{ev.target.style.height="auto";ev.target.style.height=(ev.target.scrollHeight)+"px"}}
-                    placeholder="Exercice"
-                    style={{flex:1,padding:"10px",borderRadius:8,border:`1px solid ${C.border}`,background:C.surface,color:C.text,fontFamily:"inherit",fontSize:14,resize:"none",minHeight:"50px"}}
-                  />
-                  <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,paddingTop:10}}>✕</button>
+                <div style={{marginBottom:6,display:"flex",gap:6,alignItems:"flex-start"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <AutoTextarea value={e.nom} onChange={v=>updLibreExo(i,"nom",v)} placeholder="Exercice"/>
+                  </div>
+                  <button onClick={()=>setLibreExos(p=>p.filter((_,j)=>j!==i))} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,flexShrink:0,padding:"10px 0"}}>✕</button>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"60px 1fr 1fr",gap:6}}>
+                <div style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr",gap:6,alignItems:"start"}}>
                   {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(
-                    <input key={f} value={e[f]||""} onChange={ev=>updLibreExo(i,f,ev.target.value)} placeholder={ph} className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/>
+                    <AutoTextarea key={f} value={e[f]} onChange={v=>updLibreExo(i,f,v)} placeholder={ph} style={{textAlign:"center",padding:"9px 6px",fontSize:12}}/>
                   ))}
                 </div>
               </div>
@@ -2439,12 +2449,14 @@ function AddCycle({athletesList,onClose,onAdd}) {
             <input value={sc.nom} onChange={e=>updScNom(si,e.target.value)} placeholder="Nom (ex: Jour A...)" className="inp" style={{marginBottom:10,background:C.surface}}/>
             {sc.exercices.map((e,ei)=>(
               <div key={ei} style={{padding:"10px",borderRadius:10,background:C.surface,marginBottom:6}}>
-                <div style={{display:"flex",gap:6,marginBottom:6}}>
-                  <input value={e.nom} onChange={ev=>updEx(si,ei,"nom",ev.target.value)} placeholder="Exercice" className="inp" style={{flex:1}}/>
-                  <button onClick={()=>delEx(si,ei)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>✕</button>
+                <div style={{display:"flex",gap:6,marginBottom:6,alignItems:"flex-start"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <AutoTextarea value={e.nom} onChange={v=>updEx(si,ei,"nom",v)} placeholder="Exercice"/>
+                  </div>
+                  <button onClick={()=>delEx(si,ei)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16,padding:"10px 0",flexShrink:0}}>✕</button>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                  {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(<input key={f} value={e[f]} onChange={ev=>updEx(si,ei,f,ev.target.value)} placeholder={ph} className="inp" style={{textAlign:"center",padding:"8px 4px",fontSize:12}}/>))}
+                <div style={{display:"grid",gridTemplateColumns:"58px 1fr 1fr",gap:6,alignItems:"start"}}>
+                  {[["series","Séries"],["reps","Reps"],["notes","Notes"]].map(([f,ph])=>(<AutoTextarea key={f} value={e[f]} onChange={v=>updEx(si,ei,f,v)} placeholder={ph} style={{textAlign:"center",padding:"9px 6px",fontSize:12}}/>))}
                 </div>
               </div>
             ))}
