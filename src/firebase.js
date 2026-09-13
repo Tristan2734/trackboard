@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, push, onValue, update, remove } from "firebase/database";
+import { getDatabase, ref, set, push, onValue, update, remove, query, orderByKey, startAt, endAt } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -29,6 +29,11 @@ export const setPresence = (seanceId, userId, status) =>
     : set(ref(db, `seances/${seanceId}/presences/${userId}`), status);
 
 export const getLogs = (cb) => onValue(ref(db, "logs"), s => cb(s.val() || {}));
+// Ne télécharge que les bilans d'un seul athlète (clés "athleteId_seanceId")
+export const getLogsForUser = (uid, cb) => onValue(
+  query(ref(db, "logs"), orderByKey(), startAt(`${uid}_`), endAt(`${uid}_\uf8ff`)),
+  s => cb(s.val() || {})
+);
 export const saveLog = (seanceId, athleteId, data) =>
   set(ref(db, `logs/${athleteId}_${seanceId}`), { ...data, seanceId, athleteId, ts: Date.now() });
 

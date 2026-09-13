@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getUsers, saveUser, getSeances, addSeance, updateSeance, deleteSeance, setPresence, getLogs, saveLog, getComps, addComp, updateComp, deleteComp, getCycles, addCycle, updateCycle, deleteCycle } from "./firebase";
+import { getUsers, saveUser, getSeances, addSeance, updateSeance, deleteSeance, setPresence, getLogs, getLogsForUser, saveLog, getComps, addComp, updateComp, deleteComp, getCycles, addCycle, updateCycle, deleteCycle } from "./firebase";
 import { ref, set, onValue, push, get } from "firebase/database";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { db, auth } from "./firebase";
@@ -406,20 +406,8 @@ export default function App() {
   useEffect(()=>{
     if(!user)return;
     const us=[getUsers(setUsers),getSeances(rawSeances=>{
-      // Migration: séances sans dateISO → calculer et stocker la vraie date
-      const seancesObj=rawSeances||{};
-      Object.entries(seancesObj).forEach(([id,s])=>{
-        if(!s.dateISO&&(s.weekOffset!==undefined||s.jour!==undefined)){
-          const wo=s.weekOffset||0;
-          const jour=s.jour||0;
-          const ws=weekStart(wo);
-          ws.setDate(ws.getDate()+jour);
-          const dateISO=ws.toISOString().slice(0,10);
-          updateSeance(id,{dateISO});
-        }
-      });
-      setSeances(seancesObj);
-    }),getLogs(setLogs),getComps(setComps),getCycles(setCycles)];
+      setSeances(rawSeances||{});
+    }),(user.role==="coach"?getLogs(setLogs):getLogsForUser(user.id,setLogs)),getComps(setComps),getCycles(setCycles)];
     // Messages du jour (liste)
     const unMsg=onValue(ref(db,"msgs"),s=>{
       const data=s.val()||{};
@@ -1098,7 +1086,9 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
               <Avatar nom={a.nom} prenom={a.prenom} photo={a.photo}/>
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:700}}>{a.prenom} {a.nom}{a.role==="coach"&&<span style={{marginLeft:6,fontSize:10,background:C.amberBg,color:C.amber,padding:"2px 6px",borderRadius:5,fontWeight:700}}>COACH</span>}</div>
-                {logged?<div style={{fontSize:12,color:C.muted,fontWeight:300}}>Forme {logged.forme}/10 · Diff. {logged.difficulte}/10 · Fatigue {logged.fatigue}/10</div>:<div style={{fontSize:12,color:need?C.danger:C.light,fontWeight:need?600:300}}>{need?"Bilan non rempli":"—"}</div>}
+                {(isCoach||a.id===user.id)
+                  ?(logged?<div style={{fontSize:12,color:C.muted,fontWeight:300}}>Forme {logged.forme}/10 · Diff. {logged.difficulte}/10 · Fatigue {logged.fatigue}/10</div>:<div style={{fontSize:12,color:need?C.danger:C.light,fontWeight:need?600:300}}>{need?"Bilan non rempli":"—"}</div>)
+                  :null}
               </div>
               {isCoach&&<button onClick={()=>onShowLog({seance,athleteId:a.id})} style={{fontSize:12,padding:"5px 10px",borderRadius:8,border:`1px solid ${need?C.danger:C.border}`,background:need?C.dangerBg:C.alt,color:need?C.danger:C.muted,cursor:"pointer",fontWeight:600}}>{logged?"Voir":"Saisir"}</button>}
             </div>
