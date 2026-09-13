@@ -80,3 +80,6 @@ export const getCycles = (cb) => subscribeCollection(ref(db, "cycles"), cb);
 export const addCycle = (data) => push(ref(db, "cycles"), data);
 export const updateCycle = (id, data) => update(ref(db, `cycles/${id}`), data);
 export const deleteCycle = (id) => remove(ref(db, `cycles/${id}`));
+
+export const deleteUserProfile = (id) => remove(ref(db, `users/${id}`));
+export const deleteLog = (key) => remove(ref(db, `logs/${key}`));

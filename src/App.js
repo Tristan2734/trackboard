@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getUsers, saveUser, getSeances, addSeance, updateSeance, deleteSeance, setPresence, getLogs, getLogsForUser, saveLog, getComps, addComp, updateComp, deleteComp, getCycles, addCycle, updateCycle, deleteCycle } from "./firebase";
+import { getUsers, saveUser, deleteUserProfile, deleteLog, getSeances, addSeance, updateSeance, deleteSeance, setPresence, getLogs, getLogsForUser, saveLog, getComps, addComp, updateComp, deleteComp, getCycles, addCycle, updateCycle, deleteCycle } from "./firebase";
 import { ref, set, onValue, push, get } from "firebase/database";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { db, auth } from "./firebase";
@@ -540,7 +540,7 @@ export default function App() {
 
       <div className="fade view-enter">
         {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} filterAthlete={filterAthlete} setFilterAthlete={setFilterAthlete} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)} vueHorizontale={vueHorizontale} setVueHorizontale={setVueHorizontale}/>}
-        {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach}/>}
+        {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach} user={user}/>}
         {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach} onSelSeance={setSelSeance} athletesList={athletesList}/>}
         {view==="comps"&&<Comps comps={comps} athletesList={athletesList} isCoach={isCoach} user={user} onUpdateComp={updateComp} onDeleteComp={deleteComp} onAdd={()=>setShowAddComp(true)}/>}
         {view==="cycles"&&<Cycles cyclesList={cyclesList} athletesList={athletesList} onAddCycle={addCycle} onDeleteCycle={deleteCycle} onUpdateCycle={updateCycle} isCoach={isCoach} user={user}/>}
@@ -2004,7 +2004,7 @@ function ProfilView({user,seancesList,logs,cyclesList,notifs,onShowLog,onEdit,is
   );
 }
 
-function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach}) {
+function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach,user}) {
   const [filter,setFilter]=useState("all");
   const [search,setSearch]=useState("");
   const [editGroupe,setEditGroupe]=useState(null);
@@ -2017,6 +2017,17 @@ function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach}) {
 
   function assignGroupe(athlete,groupe){
     saveUser(athlete.id,{...athlete,groupe});
+    setEditGroupe(null);
+  }
+
+  async function removeAthlete(a){
+    if(!window.confirm(`Supprimer définitivement ${a.prenom} ${a.nom} ?\n\nSon profil, ses bilans et ses présences seront effacés. Cette action est irréversible.`))return;
+    // Retirer ses présences sur les séances
+    seancesList.forEach(s=>{ if((s.presences||{})[a.id]) setPresence(s.id,a.id,null); });
+    // Effacer ses bilans
+    Object.keys(logs||{}).filter(k=>k.startsWith(`${a.id}_`)).forEach(k=>deleteLog(k));
+    // Effacer le profil
+    await deleteUserProfile(a.id);
     setEditGroupe(null);
   }
 
@@ -2057,6 +2068,9 @@ function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach}) {
                     <button key={g} onClick={()=>assignGroupe(a,g)} style={{padding:"6px 12px",borderRadius:8,border:`1.5px solid ${a.groupe===g?C.green:C.border}`,background:a.groupe===g?C.green:"#fff",color:a.groupe===g?"#fff":C.muted,fontSize:12,fontWeight:700,cursor:"pointer"}}>{g}</button>
                   ))}
                 </div>
+                {a.id!==user?.id&&(
+                  <button onClick={()=>removeAthlete(a)} style={{marginTop:12,width:"100%",padding:"9px",borderRadius:8,border:`1.5px solid ${C.danger}`,background:"transparent",color:C.danger,fontSize:12,fontWeight:700,cursor:"pointer"}}>Supprimer cet athlète</button>
+                )}
               </div>
             )}
           </div>
