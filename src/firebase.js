@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, push, onValue, update, remove, query, orderByKey, startAt, endAt, onChildAdded, onChildChanged, onChildRemoved } from "firebase/database";
+import { getDatabase, ref, set, push, onValue, update, remove, query, orderByKey, orderByChild, startAt, endAt, onChildAdded, onChildChanged, onChildRemoved } from "firebase/database";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -41,7 +41,19 @@ function subscribeCollection(target, cb) {
 export const getUsers = (cb) => onValue(ref(db, "users"), s => cb(s.val() || {}));
 export const saveUser = (id, data) => set(ref(db, `users/${id}`), data);
 
-export const getSeances = (cb) => subscribeCollection(ref(db, "seances"), cb);
+// Fenetre glissante : on n'ecoute que les seances des 6 derniers mois
+// et toutes les seances futures. Empeche le volume de croitre sans fin.
+const SEANCES_WEEKS_BACK = 26;
+function seancesWindowStart() {
+  const d = new Date();
+  d.setDate(d.getDate() - SEANCES_WEEKS_BACK * 7);
+  return d.toISOString().slice(0, 10);
+}
+
+export const getSeances = (cb) => subscribeCollection(
+  query(ref(db, "seances"), orderByChild("dateISO"), startAt(seancesWindowStart())),
+  cb
+);
 export const addSeance = (data) => push(ref(db, "seances"), data);
 export const updateSeance = (id, data) => update(ref(db, `seances/${id}`), data);
 export const deleteSeance = (id) => remove(ref(db, `seances/${id}`));
