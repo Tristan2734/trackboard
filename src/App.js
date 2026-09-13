@@ -1,7 +1,30 @@
 import { useState, useEffect, useRef } from "react";
 import { getUsers, saveUser, getSeances, addSeance, updateSeance, deleteSeance, setPresence, getLogs, saveLog, getComps, addComp, updateComp, deleteComp, getCycles, addCycle, updateCycle, deleteCycle } from "./firebase";
-import { ref, set, onValue, push } from "firebase/database";
-import { db } from "./firebase";
+import { ref, set, onValue, push, get } from "firebase/database";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { db, auth } from "./firebase";
+
+// --- Auth : la licence sert d'identifiant, l'email est fabriqué en interne ---
+const authEmail = lic => `${String(lic).trim().toLowerCase()}@trackboard.app`;
+const authPass  = lic => `TB-${String(lic).trim()}`;
+
+async function ensureAuth(licence) {
+  const email = authEmail(licence), pass = authPass(licence);
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch (e) {
+    if (["auth/user-not-found","auth/invalid-credential","auth/invalid-login-credentials"].includes(e.code)) {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    } else {
+      throw e;
+    }
+  }
+}
+
+async function fetchUsersOnce() {
+  const snap = await get(ref(db, "users"));
+  return snap.val() || {};
+}
 
 const DISCIPLINES = ["Sprint","Haies","Sprint long","Aérobie","Longueur","Hauteur","Perche","Plio","Poids","Javelot","Disque","Général"];
 const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
@@ -249,30 +272,48 @@ function SeanceIcon({type,size=36,light}) {
 function Login({onLogin}) {
   useEffect(()=>injectStyles(),[]);
   const [licence,setLicence]=useState("");
-  const [users,setUsers]=useState({});
   const [notFound,setNotFound]=useState(false);
+  const [errMsg,setErrMsg]=useState("");
   const [newMode,setNewMode]=useState(false);
   const [prenom,setPrenom]=useState(""); const [nom,setNom]=useState("");
   const [isCoach,setIsCoach]=useState(false); const [loading,setLoading]=useState(false);
 
-  useEffect(()=>{const u=getUsers(setUsers);return()=>u&&u();},[]);
-
   async function tryLogin() {
     if(!licence.trim())return;
-    setLoading(true);
-    const found=Object.values(users).find(u=>u.licence===licence.trim());
-    if(found){localStorage.setItem("tb_user",JSON.stringify(found));onLogin(found,found.role==="coach");return;}
-    setNotFound(true);setLoading(false);
+    setLoading(true);setNotFound(false);setErrMsg("");
+    try {
+      await ensureAuth(licence);
+      const users=await fetchUsersOnce();
+      const found=Object.values(users).find(u=>u.licence===licence.trim());
+      if(found){
+        localStorage.setItem("tb_user",JSON.stringify(found));
+        onLogin(found,found.role==="coach");
+        return;
+      }
+      setNotFound(true);
+    } catch(e) {
+      console.error(e);
+      setErrMsg("Connexion impossible. Vérifie ta licence et réessaie.");
+    }
+    setLoading(false);
   }
 
   async function register() {
     if(!nom.trim()||!prenom.trim()||!licence.trim())return;
-    setLoading(true);
-    const id=`${prenom.toLowerCase().replace(/\s/g,"")}${nom.toLowerCase().replace(/\s/g,"")}${licence.trim()}`;
-    const user={id,nom:nom.trim(),prenom:prenom.trim(),licence:licence.trim(),role:isCoach?"coach":"athlete",createdAt:Date.now()};
-    await saveUser(id,user);
-    localStorage.setItem("tb_user",JSON.stringify(user));
-    onLogin(user,isCoach);
+    setLoading(true);setErrMsg("");
+    try {
+      await ensureAuth(licence);
+      const id=`${prenom.toLowerCase().replace(/\s/g,"")}${nom.toLowerCase().replace(/\s/g,"")}${licence.trim()}`;
+      const user={id,nom:nom.trim(),prenom:prenom.trim(),licence:licence.trim(),role:isCoach?"coach":"athlete",createdAt:Date.now()};
+      await saveUser(id,user);
+      localStorage.setItem("tb_user",JSON.stringify(user));
+      onLogin(user,isCoach);
+      return;
+    } catch(e) {
+      console.error(e);
+      setErrMsg("Création impossible. Cette licence est peut-être déjà utilisée.");
+    }
+    setLoading(false);
   }
 
   if(newMode) return (
@@ -286,6 +327,7 @@ function Login({onLogin}) {
         <input className="inp" placeholder="Nom" value={nom} onChange={e=>setNom(e.target.value)}/>
         <input className="inp" placeholder="N° de licence" value={licence} onChange={e=>setLicence(e.target.value)}/>
         <Toggle label="Je suis coach" sub="Accès gestion complète" value={isCoach} onChange={setIsCoach}/>
+        {errMsg&&<div style={{fontSize:13,color:C.danger}}>{errMsg}</div>}
         <button className="btn-primary" onClick={register} disabled={loading} style={{marginTop:8}}>{loading?"...":"Créer mon compte →"}</button>
         <button className="btn-ghost" onClick={()=>setNewMode(false)} style={{width:"100%"}}>← Retour</button>
       </div>
@@ -304,7 +346,8 @@ function Login({onLogin}) {
         <div style={{fontSize:15,fontWeight:600,color:C.text}}>Ton numéro de licence</div>
         <input className="inp" placeholder="Ex: 123456" value={licence} onChange={e=>{setLicence(e.target.value);setNotFound(false);}}/>
         {notFound&&<div style={{fontSize:13,color:C.danger}}>Licence introuvable — crée ton compte.</div>}
-        <button className="btn-primary" onClick={tryLogin} disabled={loading}>{loading?"Recherche...":"Accéder →"}</button>
+        {errMsg&&<div style={{fontSize:13,color:C.danger}}>{errMsg}</div>}
+        <button className="btn-primary" onClick={tryLogin} disabled={loading}>{loading?"Connexion...":"Accéder →"}</button>
         <div style={{textAlign:"center",fontSize:13,color:C.muted,fontWeight:300}}>Première connexion ?</div>
         <button className="btn-ghost" onClick={()=>setNewMode(true)} style={{width:"100%"}}>Créer mon compte</button>
       </div>
@@ -315,6 +358,7 @@ function Login({onLogin}) {
 export default function App() {
   const [darkMode,setDarkMode]=useState(()=>localStorage.getItem("tb_dark")==="1");
   const [user,setUser]=useState(null); const [isCoach,setIsCoach]=useState(false);
+  const [booting,setBooting]=useState(true);
   const [view,setView]=useState("planning");
   const [users,setUsers]=useState({}); const [seances,setSeances]=useState({});
   const [localPresences,setLocalPresences]=useState({});
@@ -344,7 +388,21 @@ export default function App() {
       }).catch(()=>{});
   },[]);
 
-  useEffect(()=>{const s=localStorage.getItem("tb_user");if(s){const u=JSON.parse(s);setUser(u);setIsCoach(u.role==="coach");}},[]);
+  useEffect(()=>{
+    const s=localStorage.getItem("tb_user");
+    if(!s){setBooting(false);return;}
+    const u=JSON.parse(s);
+    (async()=>{
+      try{
+        await ensureAuth(u.licence);
+        setUser(u);setIsCoach(u.role==="coach");
+      }catch(e){
+        console.error("Session expirée",e);
+        localStorage.removeItem("tb_user");
+      }
+      setBooting(false);
+    })();
+  },[]);
   useEffect(()=>{
     if(!user)return;
     const us=[getUsers(setUsers),getSeances(rawSeances=>{
@@ -373,7 +431,7 @@ export default function App() {
   },[user]);
 
   const handleLogin=(u,coach)=>{setUser(u);setIsCoach(coach);};
-  const logout=()=>{localStorage.removeItem("tb_user");setUser(null);setIsCoach(false);};
+  const logout=()=>{localStorage.removeItem("tb_user");signOut(auth).catch(()=>{});setUser(null);setIsCoach(false);};
   C=darkMode?DARK:LIGHT;
 
   useEffect(()=>{
@@ -382,6 +440,11 @@ export default function App() {
     localStorage.setItem("tb_dark",darkMode?"1":"0");
   },[darkMode]);
 
+  if(booting) return (
+    <div style={{maxWidth:480,margin:"0 auto",minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{fontSize:28,fontWeight:800,color:C.green}}>Track<span style={{fontWeight:200}}>Board</span></div>
+    </div>
+  );
   if(!user) return <Login onLogin={handleLogin}/>;
 
   const athletesList=Object.values(users);

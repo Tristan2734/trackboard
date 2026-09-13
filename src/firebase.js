@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, push, onValue, update, remove } from "firebase/database";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBNOOPClvGZAxouTnki9bPe6zsL7sNClT0",
@@ -13,6 +14,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
+export const auth = getAuth(app);
 
 export const getUsers = (cb) => onValue(ref(db, "users"), s => cb(s.val() || {}));
 export const saveUser = (id, data) => set(ref(db, `users/${id}`), data);
