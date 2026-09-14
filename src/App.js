@@ -240,6 +240,36 @@ function Modal({children,onClose,title,full,noBackdropClose}) {
   );
 }
 
+// --- Compression des images avant stockage en base ---
+function drawToDataUrl(img,maxSize,quality){
+  const scale=Math.min(1,maxSize/Math.max(img.width,img.height));
+  const w=Math.max(1,Math.round(img.width*scale)), h=Math.max(1,Math.round(img.height*scale));
+  const canvas=document.createElement("canvas");
+  canvas.width=w; canvas.height=h;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
+  ctx.drawImage(img,0,0,w,h);
+  return canvas.toDataURL("image/jpeg",quality);
+}
+
+function compressDataUrl(dataUrl,maxSize=220,quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{try{resolve(drawToDataUrl(img,maxSize,quality));}catch(e){reject(e);}};
+    img.onerror=reject;
+    img.src=dataUrl;
+  });
+}
+
+function compressFile(file,maxSize=220,quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>compressDataUrl(reader.result,maxSize,quality).then(resolve).catch(reject);
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 function AutoTextarea({value,onChange,placeholder,style}) {
   const taRef=useRef(null);
   useEffect(()=>{
@@ -2020,6 +2050,29 @@ function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach,user}) {
     setEditGroupe(null);
   }
 
+  const [optim,setOptim]=useState(null);
+
+  async function optimiserPhotos(){
+    const avecPhoto=athletesList.filter(a=>typeof a.photo==="string"&&a.photo.startsWith("data:"));
+    if(avecPhoto.length===0){window.alert("Aucune photo à optimiser.");return;}
+    if(!window.confirm(`Recompresser les ${avecPhoto.length} photos de profil ?\n\nElles seront réduites en taille sans changer leur apparence dans l'app.`))return;
+    let avant=0,apres=0,n=0;
+    for(let i=0;i<avecPhoto.length;i++){
+      const a=avecPhoto[i];
+      setOptim(`${i+1}/${avecPhoto.length}`);
+      try{
+        const small=await compressDataUrl(a.photo,220,0.72);
+        if(small.length<a.photo.length){
+          avant+=a.photo.length; apres+=small.length; n++;
+          await saveUser(a.id,{...a,photo:small});
+        }
+      }catch(e){console.error("Photo non optimisable",a.id,e);}
+    }
+    setOptim(null);
+    const gain=avant>0?Math.round((1-apres/avant)*100):0;
+    window.alert(`${n} photo(s) optimisée(s).\nPoids réduit de ${gain}% (${Math.round(avant/1024)} Ko → ${Math.round(apres/1024)} Ko).`);
+  }
+
   async function removeAthlete(a){
     if(!window.confirm(`Supprimer définitivement ${a.prenom} ${a.nom} ?\n\nSon profil, ses bilans et ses présences seront effacés. Cette action est irréversible.`))return;
     // Retirer ses présences sur les séances
@@ -2034,6 +2087,11 @@ function Athletes({athletesList,seancesList,logs,notifs,onSel,isCoach,user}) {
   return (
     <div style={{padding:"16px 20px"}}>
       <input className="inp" placeholder="Rechercher un athlète..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
+      {isCoach&&(
+        <button onClick={optimiserPhotos} disabled={!!optim} style={{width:"100%",padding:"9px",borderRadius:10,border:`1.5px solid ${C.border}`,background:"transparent",color:C.muted,fontSize:12,fontWeight:700,cursor:optim?"default":"pointer",marginBottom:12}}>
+          {optim?`Optimisation ${optim}...`:"Optimiser les photos de profil"}
+        </button>
+      )}
       <div style={{display:"flex",gap:8,marginBottom:14,overflowX:"auto"}}>
         {["all",...GROUPES].map(g=>(
           <button key={g} onClick={()=>setFilter(g)} className={`chip ${filter===g?"chip-on":"chip-off"}`} style={{flexShrink:0}}>
@@ -2156,9 +2214,11 @@ function InfoCompEditor({info,onSave}) {
 function PhotoUploader({onAdd}) {
   function handle(e){
     Array.from(e.target.files).forEach(f=>{
-      const r=new FileReader();
-      r.onload=ev=>onAdd(ev.target.result);
-      r.readAsDataURL(f);
+      compressFile(f,900,0.68).then(onAdd).catch(()=>{
+        const r=new FileReader();
+        r.onload=ev=>onAdd(ev.target.result);
+        r.readAsDataURL(f);
+      });
     });
     e.target.value="";
   }
@@ -2683,7 +2743,7 @@ function ProfileModal({user,onClose,onSave,onLogout}) {
   const [club,setClub]=useState(user.club||"");
   const CATEGORIES=["U16","U18","U20","U23","Sénior","Master"];
   const recKeys=sexe==="Femme"?["Pentathlon","Heptathlon","Décathlon"]:["Décathlon","Heptathlon"];
-  function handlePhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);}
+  function handlePhoto(e){const f=e.target.files[0];if(!f)return;compressFile(f,220,0.72).then(setPhoto).catch(()=>{const r=new FileReader();r.onload=ev=>setPhoto(ev.target.result);r.readAsDataURL(f);});}
   return (
     <Modal onClose={onClose} title="Mon profil" full>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:24,gap:10}}>

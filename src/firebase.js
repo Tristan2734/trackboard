@@ -38,7 +38,7 @@ function subscribeCollection(target, cb) {
   };
 }
 
-export const getUsers = (cb) => onValue(ref(db, "users"), s => cb(s.val() || {}));
+export const getUsers = (cb) => subscribeCollection(ref(db, "users"), cb);
 export const saveUser = (id, data) => set(ref(db, `users/${id}`), data);
 
 // Fenetre glissante : on n'ecoute que les seances des 6 derniers mois
