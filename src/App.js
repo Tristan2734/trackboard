@@ -134,14 +134,23 @@ function isoToWeekOffset(dateISO) {
   return Math.round((dMonday - todayMonday) / (7 * 86400000));
 }
 
+// toISOString() convertit en UTC : à minuit heure française cela renvoie la
+// veille. On formate donc la date locale à la main.
+function toISODateLocal(d) {
+  const y=d.getFullYear();
+  const m=String(d.getMonth()+1).padStart(2,"0");
+  const j=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${j}`;
+}
+
 function weekStartISO(offset=0) {
-  return weekStart(offset).toISOString().slice(0,10);
+  return toISODateLocal(weekStart(offset));
 }
 
 function getDateISO(weekOffset, jourIndex) {
   const ws = weekStart(weekOffset);
   ws.setDate(ws.getDate() + jourIndex);
-  return ws.toISOString().slice(0,10);
+  return toISODateLocal(ws);
 }
 
 // date ISO → {weekOffset, jour: 0=lun…6=dim}
@@ -396,6 +405,7 @@ export default function App() {
   const [cycles,setCycles]=useState({});
   const [selSeance,setSelSeance]=useState(null); const [selAthlete,setSelAthlete]=useState(null);
   const [showLog,setShowLog]=useState(null); const [showAddSeance,setShowAddSeance]=useState(false);
+  const [showDupWeek,setShowDupWeek]=useState(false);
   const [showAddComp,setShowAddComp]=useState(false); const [showProfile,setShowProfile]=useState(false);
   const [showMsgJour,setShowMsgJour]=useState(false);
   const [msgs,setMsgs]=useState([]);
@@ -569,7 +579,7 @@ export default function App() {
       </div>
 
       <div className="fade view-enter">
-        {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} filterAthlete={filterAthlete} setFilterAthlete={setFilterAthlete} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)} vueHorizontale={vueHorizontale} setVueHorizontale={setVueHorizontale}/>}
+        {view==="planning"&&<Planning seancesByJour={seancesByJour} athletesList={athletesList} logs={logs} notifs={notifs} filterGroupe={filterGroupe} setFilterGroupe={setFilterGroupe} filterMine={filterMine} setFilterMine={setFilterMine} filterAthlete={filterAthlete} setFilterAthlete={setFilterAthlete} weekOffset={weekOffset} setWeekOffset={setWeekOffset} ws={ws} isCoach={isCoach} user={user} localPresences={localPresences} onSel={setSelSeance} onAdd={()=>setShowAddSeance(true)} onDupWeek={()=>setShowDupWeek(true)} vueHorizontale={vueHorizontale} setVueHorizontale={setVueHorizontale}/>}
         {view==="athletes"&&isCoach&&<Athletes athletesList={athletesList} seancesList={seancesList} logs={logs} notifs={notifs} onSel={setSelAthlete} isCoach={isCoach} user={user}/>}
         {view==="profil"&&!isCoach&&<ProfilView user={user} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} onEdit={()=>setShowProfile(true)} isCoach={isCoach} onSelSeance={setSelSeance} athletesList={athletesList}/>}
         {view==="comps"&&<Comps comps={comps} athletesList={athletesList} isCoach={isCoach} user={user} onUpdateComp={updateComp} onDeleteComp={deleteComp} onAdd={()=>setShowAddComp(true)}/>}
@@ -615,6 +625,7 @@ export default function App() {
       {showDuplicate&&<DuplicateSeanceModal seance={showDuplicate} onClose={()=>setShowDuplicate(null)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowDuplicate(null);}} athletesList={athletesList} currentWeekOffset={weekOffset}/>}
       {showLog&&<LogModal seance={showLog.seance} athleteId={showLog.athleteId} existing={logs[`${showLog.athleteId}_${showLog.seance.id}`]} cyclesList={cyclesList} onClose={()=>setShowLog(null)} onSave={data=>{saveLog(showLog.seance.id,showLog.athleteId,data);setShowLog(null);}}/>}
       {showAddSeance&&<AddSeance onClose={()=>setShowAddSeance(false)} onAdd={(data,wo)=>{addSeance({...data,weekOffset:wo,createdBy:user.id});setShowAddSeance(false);}} athletesList={athletesList} cyclesList={cyclesList} user={user} currentWeekOffset={weekOffset}/>}
+      {showDupWeek&&<DupWeekModal seancesList={seancesList} weekOffset={weekOffset} user={user} onClose={()=>setShowDupWeek(false)}/>}
       {selAthlete&&<Modal onClose={()=>setSelAthlete(null)} title={`${selAthlete.prenom} ${selAthlete.nom}`} full noBackdropClose><ProfilView user={selAthlete} seancesList={seancesList} logs={logs} cyclesList={cyclesList} notifs={notifs} onShowLog={setShowLog} isCoach={isCoach} onSelSeance={s=>{setSelAthlete(null);setSelSeance(s);}} athletesList={athletesList}/></Modal>}
       {showAddComp&&<AddComp onClose={()=>setShowAddComp(false)} onAdd={data=>{addComp(data);setShowAddComp(false);}}/>}
       {showProfile&&<ProfileModal user={user} onClose={()=>setShowProfile(false)} onSave={data=>{const u={...user,...data};saveUser(user.id,u);localStorage.setItem("tb_user",JSON.stringify(u));setUser(u);setShowProfile(false);}} onLogout={logout}/>}
@@ -693,7 +704,106 @@ export default function App() {
   );
 }
 
-function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd,vueHorizontale,setVueHorizontale}) {
+// Duplique toutes les séances d'une semaine vers une autre, groupe par groupe.
+function DupWeekModal({seancesList,weekOffset,user,onClose}) {
+  const [targetISO,setTargetISO]=useState(weekStartISO(weekOffset+1));
+  const [sel,setSel]=useState([...GROUPES]);
+  const [sansGroupe,setSansGroupe]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [done,setDone]=useState(null);
+
+  const targetWo=isoToWeekOffset(targetISO);
+
+  const seancesSemaine=seancesList.filter(s=>{
+    const wo=s.dateISO?parseDateISO(s.dateISO).weekOffset:(s.weekOffset||0);
+    return wo===weekOffset;
+  });
+
+  function groupesDe(s){
+    if(s.groupes&&s.groupes.length>0)return s.groupes;
+    if(s.groupe)return [s.groupe];
+    return [];
+  }
+
+  const aCopier=seancesSemaine.filter(s=>{
+    const g=groupesDe(s);
+    if(g.length===0)return sansGroupe;
+    return g.some(x=>sel.includes(x));
+  });
+
+  function toggle(g){setSel(p=>p.includes(g)?p.filter(x=>x!==g):[...p,g]);}
+  const toutCoche=sel.length===GROUPES.length&&sansGroupe;
+
+  async function dupliquer(){
+    if(aCopier.length===0)return;
+    setBusy(true);
+    let n=0;
+    for(const s of aCopier){
+      const jour=s.dateISO?parseDateISO(s.dateISO).jour:(s.jour||0);
+      const copie={...s};
+      delete copie.id;
+      delete copie.presences;
+      copie.dateISO=getDateISO(targetWo,jour);
+      copie.jour=jour;
+      copie.weekOffset=targetWo;
+      copie.createdBy=user.id;
+      copie.createdAt=Date.now();
+      try{await addSeance(copie);n++;}catch(e){console.error("Duplication",e);}
+    }
+    setBusy(false);
+    setDone(n);
+  }
+
+  return (
+    <Modal onClose={onClose} title="Dupliquer la semaine">
+      <div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{padding:"10px 12px",borderRadius:10,background:C.alt,fontSize:13,color:C.muted,fontWeight:300}}>
+          Source : {weekLabel(weekStart(weekOffset))} — {seancesSemaine.length} séance{seancesSemaine.length>1?"s":""}
+        </div>
+
+        <div>
+          <Lbl>Semaine de destination</Lbl>
+          <input type="date" value={targetISO} onChange={e=>setTargetISO(e.target.value)} className="inp"/>
+          <div style={{fontSize:12,color:C.green,fontWeight:600,marginTop:6}}>{weekLabel(weekStart(targetWo))}</div>
+        </div>
+
+        <div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <Lbl>Groupes à dupliquer</Lbl>
+            <button onClick={()=>{setSel(toutCoche?[]:[...GROUPES]);setSansGroupe(!toutCoche);}} style={{background:"none",border:"none",fontSize:11,color:C.green,fontWeight:700,cursor:"pointer"}}>
+              {toutCoche?"Tout décocher":"Tout cocher"}
+            </button>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {GROUPES.map(g=>(
+              <button key={g} onClick={()=>toggle(g)} className={`chip ${sel.includes(g)?"chip-on":"chip-off"}`}>{g}</button>
+            ))}
+            <button onClick={()=>setSansGroupe(v=>!v)} className={`chip ${sansGroupe?"chip-on":"chip-off"}`}>Sans groupe</button>
+          </div>
+        </div>
+
+        <div style={{padding:"12px",borderRadius:10,background:aCopier.length?C.greenLight:C.alt,fontSize:13,color:aCopier.length?C.green:C.muted,fontWeight:600}}>
+          {aCopier.length===0?"Aucune séance ne correspond à cette sélection.":`${aCopier.length} séance${aCopier.length>1?"s":""} seront copiées vers la semaine du ${formatDateFR(weekStartISO(targetWo))}.`}
+        </div>
+
+        {done!=null?(
+          <div style={{padding:"12px",borderRadius:10,background:C.greenLight,color:C.green,fontSize:13,fontWeight:700,textAlign:"center"}}>
+            ✓ {done} séance{done>1?"s":""} dupliquée{done>1?"s":""}.
+          </div>
+        ):(
+          <button className="btn-primary" onClick={dupliquer} disabled={busy||aCopier.length===0||targetWo===weekOffset}>
+            {busy?"Duplication...":targetWo===weekOffset?"Choisis une autre semaine":"Dupliquer"}
+          </button>
+        )}
+        <div style={{fontSize:11,color:C.muted,fontWeight:300,lineHeight:1.5}}>
+          Les horaires, disciplines, contenus et couleurs sont repris. Les présences et les bilans ne le sont pas.
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilterGroupe,filterMine,setFilterMine,filterAthlete,setFilterAthlete,weekOffset,setWeekOffset,ws,isCoach,user,localPresences,onSel,onAdd,onDupWeek,vueHorizontale,setVueHorizontale}) {
   return (
     <div>
       <div style={{padding:"12px 20px 8px"}}>
@@ -867,8 +977,9 @@ function Planning({seancesByJour,athletesList,logs,notifs,filterGroupe,setFilter
           </div>
         );
       })}
-      <div style={{padding:"8px 16px 24px"}}>
+      <div style={{padding:"8px 16px 24px",display:"flex",flexDirection:"column",gap:8}}>
         <button onClick={onAdd} style={{width:"100%",padding:"14px",borderRadius:14,border:`2px dashed ${C.border}`,background:"transparent",color:C.muted,fontSize:14,fontWeight:700,cursor:"pointer"}}>+ Nouvelle séance</button>
+        {isCoach&&<button onClick={onDupWeek} style={{width:"100%",padding:"12px",borderRadius:14,border:`1.5px solid ${C.border}`,background:"transparent",color:C.muted,fontSize:13,fontWeight:700,cursor:"pointer"}}>Dupliquer cette semaine</button>}
       </div>
       </>)}
     </div>
@@ -911,7 +1022,7 @@ function SeanceModal({seance,athletesList,logs,isCoach,user,notifs,cyclesList,on
   const initDateISO=seance.dateISO||(()=>{
     const ws=weekStart(seance.weekOffset||0);
     ws.setDate(ws.getDate()+(seance.jour||0));
-    return ws.toISOString().slice(0,10);
+    return toISODateLocal(ws);
   })();
   const [dateISO,setDateISO]=useState(initDateISO);
   const [hD,setHD]=useState(seance.heureDebut||"10:00");
@@ -1400,7 +1511,8 @@ function StatsView({mySeances,logs,userId}) {
   const weekStats=[];
   const weekMap={};
   mySeances.forEach(s=>{
-    const wo=s.weekOffset||0;
+    // La vraie semaine vient de dateISO ; weekOffset n'est qu'un fallback hérité
+    const wo=s.dateISO?parseDateISO(s.dateISO).weekOffset:(s.weekOffset||0);
     if(!weekMap[wo])weekMap[wo]={wo,seances:[],forms:[],fatigues:[],discs:{},types:{}};
     weekMap[wo].seances.push(s);
     const log=logs[`${userId}_${s.id}`];
@@ -1408,17 +1520,13 @@ function StatsView({mySeances,logs,userId}) {
       if(log.forme!=null)weekMap[wo].forms.push(log.forme);
       if(log.fatigue!=null)weekMap[wo].fatigues.push(log.fatigue);
     }
-    // Disciplines - inclure muscu et exercices libres
-    const discs=log?.myDiscs||s.disciplines||[];
-    // Si muscu et log avec exos, utiliser les noms d'exos comme disciplines
-    if(s.type==="muscu"&&log?.exos?.length>0){
-      log.exos.filter(e=>e.nom).forEach(e=>weekMap[wo].discs[e.nom]=(weekMap[wo].discs[e.nom]||0)+1);
-    } else if(s.type==="muscu"&&discs.length===0){
-      // Pas de disciplines → ajouter "Muscu" générique
+    // Disciplines : jamais les mouvements de muscu, uniquement les disciplines
+    // athlé — plus un "Muscu" générique quand la séance en est une.
+    const rawDiscs=(log?.myDiscs||s.disciplines||[]).filter(d=>DISCIPLINES.includes(d));
+    if(s.type==="muscu"){
       weekMap[wo].discs["Muscu"]=(weekMap[wo].discs["Muscu"]||0)+1;
-    } else {
-      discs.forEach(d=>weekMap[wo].discs[d]=(weekMap[wo].discs[d]||0)+1);
     }
+    rawDiscs.forEach(d=>weekMap[wo].discs[d]=(weekMap[wo].discs[d]||0)+1);
     // Types
     const t=s.type||"piste";
     weekMap[wo].types[t]=(weekMap[wo].types[t]||0)+1;
@@ -1430,12 +1538,23 @@ function StatsView({mySeances,logs,userId}) {
 
   // Semaine sélectionnée (dernière par défaut)
   const [selWo,setSelWo]=useState(weeks.length?weeks[weeks.length-1].wo:0);
+  // Les séances arrivent après le premier rendu : on recale sur la dernière
+  // semaine réellement présente plutôt que de rester bloqué sur 0.
+  const lastWo=weeks.length?weeks[weeks.length-1].wo:0;
+  useEffect(()=>{
+    if(weeks.length&&weekMap[selWo]===undefined)setSelWo(lastWo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[lastWo,weeks.length]);
   const selWeek=weekMap[selWo];
 
-  // Données graphique (8 dernières semaines)
-  const graphWeeks=weeks.slice(-8);
-  const graphW=320,graphH=120,padL=24,padR=8,padT=10,padB=24;
+  // Données graphique : tout l'historique, largeur étirée puis scrollable
+  const graphWeeks=weeks;
+  const graphH=140,padL=24,padR=12,padT=10,padB=24;
+  const stepW=graphWeeks.length>8?38:Math.max(38,(320-padL-padR)/Math.max(graphWeeks.length-1,1));
+  const graphW=Math.max(320,padL+padR+stepW*Math.max(graphWeeks.length-1,1));
   const innerW=graphW-padL-padR;
+  // Avec beaucoup de semaines, on n'écrit qu'une étiquette sur N
+  const labelEvery=Math.max(1,Math.ceil(graphWeeks.length/12));
   const innerH=graphH-padT-padB;
   const n=graphWeeks.length;
 
@@ -1522,7 +1641,7 @@ function StatsView({mySeances,logs,userId}) {
       )}
 
       {/* Graphique évolution */}
-      {graphWeeks.length>=2&&(
+      {(formeVals.some(v=>v!=null)||fatigueVals.some(v=>v!=null))&&(
         <div>
           <div style={{fontSize:12,fontWeight:700,color:C.text,marginBottom:6}}>📈 Évolution forme / fatigue</div>
           <div style={{background:C.surface,borderRadius:14,border:`1px solid ${C.border}`,padding:"12px 8px 8px",overflowX:"auto"}}>
@@ -1536,6 +1655,7 @@ function StatsView({mySeances,logs,userId}) {
               ))}
               {/* Labels semaines */}
               {graphWeeks.map((w,i)=>{
+                if(i%labelEvery!==0&&i!==graphWeeks.length-1)return null;
                 const ws=weekStart(w.wo);
                 const lbl=`S${Math.ceil((((ws-new Date(ws.getFullYear(),0,1))/86400000)+new Date(ws.getFullYear(),0,1).getDay()+1)/7)}`;
                 return <text key={i} x={xPos(i)} y={graphH-6} fontSize={8} fill={C.light} textAnchor="middle">{lbl}</text>;
@@ -2385,7 +2505,7 @@ function CycleDetail({cycle,athletesList,onClose,onUpdate}) {
 
 function AddSeance({onClose,onAdd,athletesList,cyclesList,user,currentWeekOffset}) {
   const ws=weekStart(currentWeekOffset);
-  const mondayISO=ws.toISOString().slice(0,10);
+  const mondayISO=toISODateLocal(ws);
   const [dateISO,setDateISO]=useState(mondayISO);
   const [hD,setHD]=useState("16:00");const [hF,setHF]=useState("20:00");
   const [type,setType]=useState("piste");const [groupes,setGroupes]=useState([]);const [lieu,setLieu]=useState("");
@@ -2609,7 +2729,7 @@ function AddCycle({athletesList,onClose,onAdd}) {
 }
 
 function DuplicateSeanceModal({seance,onClose,onAdd,athletesList,currentWeekOffset}) {
-  const todayISO=new Date().toISOString().slice(0,10);
+  const todayISO=toISODateLocal(new Date());
   const [dateISO,setDateISO]=useState(seance.dateISO||todayISO);
   const [hD,setHD]=useState(seance.heureDebut||"10:00");
   const [hF,setHF]=useState(seance.heureFin||"12:00");
