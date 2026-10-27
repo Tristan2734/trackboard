@@ -1541,10 +1541,11 @@ function StatsView({mySeances,logs,userId}) {
   // Les séances arrivent après le premier rendu : on recale sur la dernière
   // semaine réellement présente plutôt que de rester bloqué sur 0.
   const lastWo=weeks.length?weeks[weeks.length-1].wo:0;
+  const nbWeeks=weeks.length;
+  const selWoExiste=weekMap[selWo]!==undefined;
   useEffect(()=>{
-    if(weeks.length&&weekMap[selWo]===undefined)setSelWo(lastWo);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[lastWo,weeks.length]);
+    if(nbWeeks>0&&!selWoExiste)setSelWo(lastWo);
+  },[lastWo,nbWeeks,selWoExiste]);
   const selWeek=weekMap[selWo];
 
   // Données graphique : tout l'historique, largeur étirée puis scrollable
